@@ -1,0 +1,16 @@
+# Generic ignores
+*~
+
+# Don't include any of v8
+/v8
+
+# Ignore Debug and Release directories
+Debug
+Release
+
+# Ignore Visual Studio stuff
+*.suo
+*.sdf
+*.opensdf
+*.user
+/ipch
