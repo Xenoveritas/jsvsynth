@@ -10,9 +10,6 @@ using namespace std;
 
 namespace jsv
 {
-// Foward declarations of stuff defined elsewhere.
-Handle<Context> CreateContext(Isolate* isolate);
-Handle<ObjectTemplate> CreateAviSynthTemplate();
 
 JSVEnvironment::JSVEnvironment(IScriptEnvironment* env) : avisynthEnv(env) {
 	isolate = Isolate::GetCurrent();
@@ -20,6 +17,9 @@ JSVEnvironment::JSVEnvironment(IScriptEnvironment* env) : avisynthEnv(env) {
 	Handle<Context> context = CreateContext(isolate);
 	// We'll be needing this context for the remainder of the program.
 	scriptingContext.Reset(isolate, context);
+	// But now that we have the context, init some global things...
+	Context::Scope context_scope(context);
+	context->Global()->Set(String::New("avisynth"), CreateAviSynthGlobal());
 }
 JSVEnvironment::~JSVEnvironment() {
 	scriptingContext.Dispose();
@@ -28,15 +28,6 @@ JSVEnvironment::~JSVEnvironment() {
 // Extracts a C string from a V8 Utf8Value.
 const char* ToCString(const v8::String::Utf8Value& value) {
 	return *value ? *value : "<string conversion failed>";
-}
-
-// Create a new copy of the string. This lives until ???
-char* CopyCStr(const v8::String::Utf8Value& value) {
-	const char* cstr = ToCString(value);
-	size_t length = strlen(cstr) + 1; // +1 to get the null character
-	char* result = new char[length];
-	strncpy_s(result, length, cstr, length);
-	return result;
 }
 
 /**
@@ -60,7 +51,7 @@ void ConsoleLog(const FunctionCallbackInfo<Value>& args) {
 	std::cout.flush();
 }
 
-Handle<Context> CreateContext(Isolate* isolate) {
+Handle<Context> JSVEnvironment::CreateContext(Isolate* isolate) {
 	// Create a template for the global object.
 	Handle<ObjectTemplate> global = ObjectTemplate::New();
 
@@ -68,13 +59,55 @@ Handle<Context> CreateContext(Isolate* isolate) {
 	Handle<ObjectTemplate> console = ObjectTemplate::New();
 	console->Set("log", FunctionTemplate::New(ConsoleLog));
 	global->Set("console", console);
-	global->Set("AviSynth", CreateAviSynthTemplate());
 	return Context::New(isolate, NULL, global);
 }
 
-Handle<ObjectTemplate> CreateAviSynthTemplate() {
+Handle<Object> JSVEnvironment::CreateAviSynthGlobal() {
+	HandleScope scope(isolate);
+	// Our first step is to create the template. We don't need to hang onto it
+	// because there's only ever the single object.
 	Handle<ObjectTemplate> avisynth = ObjectTemplate::New();
-	return avisynth;
+	// The object does have an internal field, a reference to this class.
+	avisynth->SetInternalFieldCount(1);
+	avisynth->SetNamedPropertyHandler(AviSynthGet, AviSynthSet);
+	Handle<Object> global = avisynth->NewInstance();
+	Handle<External> wrapped = External::New(this);
+	global->SetInternalField(0, wrapped);
+	return scope.Close(global);
+}
+
+JSVEnvironment* JSVEnvironment::UnwrapSelf(v8::Handle<v8::Object> obj) {
+	Handle<External> ext = Handle<External>::Cast(obj->GetInternalField(0));
+	void* ptr = ext->Value();
+	return static_cast<JSVEnvironment*>(ptr);
+}
+
+void JSVEnvironment::AviSynthGet(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info) {
+	JSVEnvironment *env = UnwrapSelf(info.Holder());
+	String::Utf8Value utf8str(name);
+	if (*utf8str) {
+		try {
+			AVSValue value = env->avisynthEnv->GetVar(*utf8str);
+			// If we're here, we have a value
+			info.GetReturnValue().Set(Convert(value));
+		} catch (IScriptEnvironment::NotFound) {
+			// Does not exist, so do nothing (which signals the property not existing to V8)
+		}
+	}
+}
+
+void JSVEnvironment::AviSynthSet(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::PropertyCallbackInfo<v8::Value>& info) {
+	// Somewhat simpler (maybe)
+	JSVEnvironment *env = UnwrapSelf(info.Holder());
+	String::Utf8Value utf8name(name);
+	AVSValue avs_value = Convert(env->avisynthEnv, value);
+	if (env->avisynthEnv->SetVar(*utf8name, avs_value)) {
+		// Value was created.
+		// Note: Due to the messed up way AviSynth works, variables created in
+		// this fashion likely won't work later in the script.
+		// This is because they "don't exist" as far as the parser is concerned
+		// or something. Whatever.
+	}
 }
 
 /**
@@ -98,12 +131,29 @@ void ThrowErrorInAviSynth(IScriptEnvironment* env, Isolate* isolate, TryCatch* t
 	}
 }
 
-AVSValue Convert(Handle<Value> value) {
+Handle<Value> Convert(AVSValue value) {
+	if (!value.Defined()) {
+		return v8::Null();
+	} else if (value.IsString()) {
+		return String::New(value.AsString());
+	} else if (value.IsInt()) {
+		return Int32::New(value.AsInt());
+	} else if (value.IsFloat()) {
+		return Number::New(value.AsFloat());
+	} else if (value.IsBool()) {
+		return Boolean::New(value.AsBool());
+	} else {
+		return String::New("<conversion failure>");
+	}
+}
+
+AVSValue Convert(IScriptEnvironment* env, Handle<Value> value) {
 	if (value->IsString()) {
-		// FIXME: I have no idea how this will work (who owns the string? I assume it vanishes when the scope dies, but I have no clue if AviSynth makes a copy)
 		String::Utf8Value utf8str(value);
-		return AVSValue(CopyCStr(utf8str));
+		TRACE("To string %s\n", *utf8str);
+		return AVSValue(env->SaveString(ToCString(utf8str)));
 	} else if (value->IsInt32()) {
+		TRACE("To int %d\n", value->Int32Value());
 		return AVSValue(value->Int32Value());
 	} else if (value->IsUint32()) {
 		return AVSValue((int) value->Uint32Value());
@@ -113,35 +163,33 @@ AVSValue Convert(Handle<Value> value) {
 		return AVSValue(value->BooleanValue());
 	} else {
 		String::Utf8Value utf8str(value);
-		return AVSValue(CopyCStr(utf8str));
+		TRACE("From ??? to %s\n", *utf8str);
+		return AVSValue(env->SaveString(ToCString(utf8str)));
 	}
 }
 
-AVSValue JSVEnvironment::RunScript(const char* source) {
-	cout << "Running script:" << endl << source << endl;
+AVSValue JSVEnvironment::RunScript(const char* source, const char* filename) {
+	TRACE("Running script [\n%s\n]\n", source);
 	HandleScope scope(isolate);
-	//
 	Context::Scope context_scope(isolate, scriptingContext);
 	TryCatch try_catch;
 	Handle<String> v8source = String::New(source);
-	cout << "Compiling script..." << endl;
-	Handle<Script> script = Script::Compile(v8source);
-	cout << "Script compiled." << endl;
+	Handle<String> v8filename = String::New(filename);
+	Handle<Script> script = Script::Compile(v8source, v8filename);
 	if (script.IsEmpty()) {
-		cout << "Error in script." << endl;
+		TRACE("Error compiling script.\n");
 		ThrowErrorInAviSynth(avisynthEnv, isolate, &try_catch);
 	} else {
-		cout << "Running script..." << endl;
+		TRACE("Running script...\n");
 		Handle<Value> result = script->Run();
-		cout << "Script run, result was ";
-		String::Utf8Value utf8str(result);
-		cout << (*utf8str) << endl;
 		if (result.IsEmpty()) {
 			// In this case, we should always have caught an exception
+			TRACE("Script threw error.\n");
 			ThrowErrorInAviSynth(avisynthEnv, isolate, &try_catch);
 		} else {
-			cout << "Converting to result..." << endl;
-			return Convert(result);
+			String::Utf8Value utf8str(result);
+			TRACE("Script result: %s\n", *utf8str ? *utf8str : "<conversion error>");
+			return Convert(avisynthEnv, result);
 		}
 	}
 	// If we've managed to fall through here, something has gone wrong, but return something anyway

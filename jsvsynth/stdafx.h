@@ -11,7 +11,8 @@
 // Windows Header Files:
 #include <windows.h>
 
-
+// Include debug stuff
+#include "debug.h"
 
 // Include AviSynth and V8 headers here
 #include "avisynth.h"
