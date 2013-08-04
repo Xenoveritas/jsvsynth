@@ -16,8 +16,11 @@ avisynth.fromjs = "hello from JavaScript"
 avisynth.outside = "change existing"
 """)
 
+c = BlankClip()
+
 test2 = JavaScript("""
 console.log("Foo = " + foo);
+console.log("Color space = " + avisynth.c.colorSpace);
 """)
 
 BlankClip()

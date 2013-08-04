@@ -5,20 +5,20 @@
 
 namespace jsv
 {
-/**
- * Convert a value from AviSynth into a V8 value. A handle scope must already exist.
- */
-v8::Handle<v8::Value> Convert(AVSValue value);
-/**
- * Convert the given value in the existing handle scope to an AviSynth value.
- */
-AVSValue Convert(IScriptEnvironment* env, v8::Handle<v8::Value> value);
 
 class JSVEnvironment {
 public:
 	JSVEnvironment(IScriptEnvironment* env);
 	~JSVEnvironment();
 	AVSValue RunScript(const char* source, const char* filename);
+	/**
+	 * Convert a value from AviSynth into a V8 value. A handle scope must already exist.
+	 */
+	v8::Handle<v8::Value> ConvertToJS(AVSValue value);
+	/**
+	 * Convert the given value in the existing handle scope to an AviSynth value.
+	 */
+	AVSValue ConvertToAVS(v8::Handle<v8::Value> value);
 private:
 	v8::Handle<v8::Context> CreateContext(v8::Isolate* isolate);
 	v8::Handle<v8::Object> CreateAviSynthGlobal();
@@ -28,6 +28,7 @@ private:
 private:
 	v8::Isolate* isolate;
 	v8::Persistent<v8::Context> scriptingContext;
+	v8::Persistent<v8::ObjectTemplate> clipTemplate;
 	IScriptEnvironment* avisynthEnv;
 };
 

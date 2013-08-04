@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "JSVEnvironment.h"
+#include "Clip.h"
 
 using namespace v8;
 using namespace std;
@@ -20,8 +21,11 @@ JSVEnvironment::JSVEnvironment(IScriptEnvironment* env) : avisynthEnv(env) {
 	// But now that we have the context, init some global things...
 	Context::Scope context_scope(context);
 	context->Global()->Set(String::New("avisynth"), CreateAviSynthGlobal());
+	// And create our clip template for later.
+	clipTemplate.Reset(isolate, JSClip::CreateObjectTemplate(context));
 }
 JSVEnvironment::~JSVEnvironment() {
+	clipTemplate.Dispose();
 	scriptingContext.Dispose();
 }
 
@@ -89,7 +93,7 @@ void JSVEnvironment::AviSynthGet(v8::Local<v8::String> name, const v8::PropertyC
 		try {
 			AVSValue value = env->avisynthEnv->GetVar(*utf8str);
 			// If we're here, we have a value
-			info.GetReturnValue().Set(Convert(value));
+			info.GetReturnValue().Set(env->ConvertToJS(value));
 		} catch (IScriptEnvironment::NotFound) {
 			// Does not exist, so do nothing (which signals the property not existing to V8)
 		}
@@ -100,7 +104,7 @@ void JSVEnvironment::AviSynthSet(v8::Local<v8::String> name, v8::Local<v8::Value
 	// Somewhat simpler (maybe)
 	JSVEnvironment *env = UnwrapSelf(info.Holder());
 	String::Utf8Value utf8name(name);
-	AVSValue avs_value = Convert(env->avisynthEnv, value);
+	AVSValue avs_value = env->ConvertToAVS(value);
 	if (env->avisynthEnv->SetVar(*utf8name, avs_value)) {
 		// Value was created.
 		// Note: Due to the messed up way AviSynth works, variables created in
@@ -131,11 +135,16 @@ void ThrowErrorInAviSynth(IScriptEnvironment* env, Isolate* isolate, TryCatch* t
 	}
 }
 
-Handle<Value> Convert(AVSValue value) {
+Handle<Value> JSVEnvironment::ConvertToJS(AVSValue value) {
 	if (!value.Defined()) {
 		return v8::Null();
 	} else if (value.IsString()) {
 		return String::New(value.AsString());
+	} else if (value.IsClip()) {
+		// Here's the fun one - wrap it up
+		HandleScope scope(isolate);
+		JSClip* clip = new JSClip(value.AsClip(), Local<ObjectTemplate>::New(isolate, clipTemplate));
+		return scope.Close(clip->GetObject(isolate));
 	} else if (value.IsInt()) {
 		return Int32::New(value.AsInt());
 	} else if (value.IsFloat()) {
@@ -147,13 +156,11 @@ Handle<Value> Convert(AVSValue value) {
 	}
 }
 
-AVSValue Convert(IScriptEnvironment* env, Handle<Value> value) {
+AVSValue JSVEnvironment::ConvertToAVS(Handle<Value> value) {
 	if (value->IsString()) {
 		String::Utf8Value utf8str(value);
-		TRACE("To string %s\n", *utf8str);
-		return AVSValue(env->SaveString(ToCString(utf8str)));
+		return AVSValue(avisynthEnv->SaveString(ToCString(utf8str)));
 	} else if (value->IsInt32()) {
-		TRACE("To int %d\n", value->Int32Value());
 		return AVSValue(value->Int32Value());
 	} else if (value->IsUint32()) {
 		return AVSValue((int) value->Uint32Value());
@@ -163,8 +170,7 @@ AVSValue Convert(IScriptEnvironment* env, Handle<Value> value) {
 		return AVSValue(value->BooleanValue());
 	} else {
 		String::Utf8Value utf8str(value);
-		TRACE("From ??? to %s\n", *utf8str);
-		return AVSValue(env->SaveString(ToCString(utf8str)));
+		return AVSValue(avisynthEnv->SaveString(ToCString(utf8str)));
 	}
 }
 
@@ -189,7 +195,7 @@ AVSValue JSVEnvironment::RunScript(const char* source, const char* filename) {
 		} else {
 			String::Utf8Value utf8str(result);
 			TRACE("Script result: %s\n", *utf8str ? *utf8str : "<conversion error>");
-			return Convert(avisynthEnv, result);
+			return ConvertToAVS(result);
 		}
 	}
 	// If we've managed to fall through here, something has gone wrong, but return something anyway
