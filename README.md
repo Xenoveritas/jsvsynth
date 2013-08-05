@@ -75,4 +75,5 @@ The value has to be set to something before it will work. Otherwise, even though
 the value will be set, AviSynth will give an "I don't know what avsvalue means"
 error for the variable.
 
-I'm not entirely sure whether or not this is a problem with
+I'm not entirely sure whether or not this is a problem with AviSynth or is
+instead something I'm unclear about within the AviSynth API.
