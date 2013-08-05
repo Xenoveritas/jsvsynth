@@ -82,19 +82,18 @@ void WrappedFunction::InvokeFunction(const v8::FunctionCallbackInfo<v8::Value>& 
 		}
 	} else {
 		// Allocate for all arguments
+		TRACE("Allocating %d arguments...\n", argCount);
 		avsArgs = (AVSValue*) malloc((argCount) * sizeof(AVSValue));
 	}
 	// Convert the values.
 	for (int i = 0; i < argCount; i++) {
+		TRACE("Converting %d\n", i);
 		avsArgs[i] = wrapped->jsvEnv->ConvertToAVS(args[i]);
 	}
 	// And... GO!
 	// Add the named args (if any) to the wrapped agrs
 	argCount += namedArgCount;
 	TRACE("Attempting to invoke %s with %d arguments (%d were named)\n", wrapped->avsName, argCount, namedArgCount);
-	for (int i = 0; i < argCount; i++) {
-		TRACE("%i = %s\n", i, namedArgs[i] == NULL ? "null" : namedArgs[i]);
-	}
 	AVSValue result;
 	try {
 		result = wrapped->jsvEnv->avisynthEnv->Invoke(wrapped->avsName, AVSValue(avsArgs, argCount), namedArgs);
