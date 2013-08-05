@@ -5,6 +5,7 @@
 
 #include "JSVEnvironment.h"
 #include "Clip.h"
+#include "Function.h"
 
 using namespace v8;
 using namespace std;
@@ -23,6 +24,7 @@ JSVEnvironment::JSVEnvironment(IScriptEnvironment* env) : avisynthEnv(env) {
 	context->Global()->Set(String::New("avisynth"), CreateAviSynthGlobal());
 	// And create our clip template for later.
 	clipTemplate.Reset(isolate, JSClip::CreateObjectTemplate(context));
+	avsFuncWrapperTemplate.Reset(isolate, WrappedFunction::CreateObjectTemplate());
 }
 JSVEnvironment::~JSVEnvironment() {
 	clipTemplate.Dispose();
@@ -90,6 +92,17 @@ void JSVEnvironment::AviSynthGet(v8::Local<v8::String> name, const v8::PropertyC
 	JSVEnvironment *env = UnwrapSelf(info.Holder());
 	String::Utf8Value utf8str(name);
 	if (*utf8str) {
+		HandleScope scope(env->isolate);
+		// First, see if there's a function by this name, in which case we'll
+		// use the function wrapper
+		if (env->avisynthEnv->FunctionExists(*utf8str)) {
+			// Wrap it up
+			WrappedFunction* wrapped = new WrappedFunction(env, *utf8str);
+			Handle<ObjectTemplate> templ = v8::Local<ObjectTemplate>::New(env->isolate, env->avsFuncWrapperTemplate);
+			Handle<Object> result = wrapped->NewInstance(templ);
+			info.GetReturnValue().Set(result);
+			return;
+		}
 		try {
 			AVSValue value = env->avisynthEnv->GetVar(*utf8str);
 			// If we're here, we have a value
@@ -131,7 +144,7 @@ void ThrowErrorInAviSynth(IScriptEnvironment* env, Isolate* isolate, TryCatch* t
 		int linenum = message->GetLineNumber();
 		// Fow now, just dump this.
 		env->ThrowError("JavaScript error: %s:%i: %s", filename_string, linenum, exception_string);
-		// In the future we might want to concatenate all that stuff into something
+		// In the future we might want to concatenate the stack trace onto the response or something
 	}
 }
 
@@ -168,6 +181,8 @@ AVSValue JSVEnvironment::ConvertToAVS(Handle<Value> value) {
 		return AVSValue(value->NumberValue());
 	} else if (value->IsBoolean()) {
 		return AVSValue(value->BooleanValue());
+	} else if (value->IsObject() && JSClip::IsWrappedClip(value->ToObject())) {
+		return AVSValue(JSClip::UnwrapClip(value->ToObject()));
 	} else {
 		String::Utf8Value utf8str(value);
 		return AVSValue(avisynthEnv->SaveString(ToCString(utf8str)));

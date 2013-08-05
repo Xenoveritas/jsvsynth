@@ -6,6 +6,8 @@
 namespace jsv
 {
 
+void ThrowAviSynthExceptionInJS(v8::Handle<v8::String> message);
+
 class JSVEnvironment {
 public:
 	JSVEnvironment(IScriptEnvironment* env);
@@ -29,7 +31,9 @@ private:
 	v8::Isolate* isolate;
 	v8::Persistent<v8::Context> scriptingContext;
 	v8::Persistent<v8::ObjectTemplate> clipTemplate;
+	v8::Persistent<v8::ObjectTemplate> avsFuncWrapperTemplate;
 	IScriptEnvironment* avisynthEnv;
+	friend class WrappedFunction;
 };
 
 };

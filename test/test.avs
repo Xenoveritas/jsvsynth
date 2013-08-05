@@ -12,8 +12,12 @@ console.log(avisynth.outside);
 console.log("Integer: " + avisynth.ival);
 console.log("Pi: " + avisynth.pi);
 
+var blank = avisynth.BlankClip({color:0xFF});
+console.log("Created a blank clip: " + blank);
+
 avisynth.fromjs = "hello from JavaScript"
 avisynth.outside = "change existing"
+blank
 """)
 
 c = BlankClip()
@@ -23,5 +27,4 @@ console.log("Foo = " + foo);
 console.log("Color space = " + avisynth.c.colorSpace);
 """)
 
-BlankClip()
-Subtitle(last, outside)
+Subtitle(test, outside)

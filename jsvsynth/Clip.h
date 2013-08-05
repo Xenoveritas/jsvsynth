@@ -15,6 +15,8 @@ public:
 	~JSClip();
 	v8::Handle<v8::Object> GetObject(v8::Isolate* isolate);
 	static v8::Handle<v8::ObjectTemplate> CreateObjectTemplate(v8::Handle<v8::Context> context);
+	static bool IsWrappedClip(v8::Handle<v8::Object>);
+	static PClip UnwrapClip(v8::Handle<v8::Object>);
 private:
 	static JSClip* UnwrapSelf(v8::Handle<v8::Object>);
 	static void DestroySelf(v8::Isolate* isolate, v8::Persistent<v8::Object>* self, JSClip* c);
