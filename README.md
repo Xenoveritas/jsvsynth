@@ -77,3 +77,30 @@ error for the variable.
 
 I'm not entirely sure whether or not this is a problem with AviSynth or is
 instead something I'm unclear about within the AviSynth API.
+
+### Calling AviSynth Filters from JavaScript
+
+For the most part, this works like you'd expect: invoke a function using the
+exact same values you would in AviSynth. This breaks in a couple of ways:
+
+1. At present, it's not possible to do something like `clip.Trim(50)`. A future
+update will likely attempt to make code like that possible.
+2. Named variables are handled as an object, as demonstrated by the
+`avisynth.BlankClip({color:0xFF})` above. For named variables, this value must
+always be the **last** value given. Otherwise, it'll be translated into a
+string (likely `[object Object]`).
+3. Conversions from JavaScript don't take into account the signature of the
+function being called. (As the signature can't be retrieved by plugins anyway.)
+
+### Other Weird Caveats
+
+AviSynth is case insensitive, and the `avisynth` object will reflect that:
+
+`avisynth.blankclip()` is the same as `avisynth.BlankClip()`.
+
+JavaScript is not: `avisynth.blankclip()` is **not** the same as
+`AviSynth.blankclip()`!
+
+This is one of the reasons why you can't use `for(var i in avisynth)` to iterate
+over variables in AviSynth. (The primary reason is that the AviSynth API offers
+absolutely no way to pull the list of variables in any case.)

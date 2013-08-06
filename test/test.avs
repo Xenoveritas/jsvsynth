@@ -2,7 +2,6 @@ LoadPlugin("..\Debug\jsvsynth.dll")
 
 outside = "Hello JavaScript"
 ival = 42
-pi = 3.14159
 
 test = JavaScript("""
 var foo = 1;
