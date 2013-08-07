@@ -20,21 +20,33 @@
 
 void __cdecl jsv_Shutdown(void* user_data, IScriptEnvironment* env) {
 	TRACE("Shutting down V8 and freeing resources...\n");
+	jsv::JSVEnvironment* jsvenv = (jsv::JSVEnvironment*)user_data;
 	// Destroy the environment.
-	delete ((jsv::JSVEnvironment*)user_data);
-	TRACE("V8 environment shutdown.\n");
+	v8::Isolate* isolate = jsvenv->GetIsolate();
+	isolate->Enter();
+	delete jsvenv;
+	TRACE("V8 environment shutdown complete.\n");
 }
 
 AVSValue __cdecl JS_Script(AVSValue args, void* user_data, IScriptEnvironment* env) {
 	TRACE("JavaScript with %p\n", env);
 	jsv::JSVEnvironment* jsvEnv = (jsv::JSVEnvironment*) user_data;
-	jsvEnv->GetIsolate()->Enter();
+	jsvEnv->EnterIsolate();
 	// First argument is the script itself.
 	// Remaining are... not allowed at present, but will probably become some way to pass stuff into JavaScript, I dunno.
 	// Wouldn't it be cool if we could pull in the current script file name and line number from AviSynth?
 	// Unfortunately it appears we can't use their own internal ScriptName function to get that
 	AVSValue result = jsvEnv->RunScript(args[0].AsString(), "<JavaScript() call>");
-	jsvEnv->GetIsolate()->Exit();
+	jsvEnv->ExitIsolate();
+	return result;
+}
+
+AVSValue __cdecl JS_Import(AVSValue args, void* user_data, IScriptEnvironment* env) {
+	TRACE("Import JavaScript %s\n", args[0].AsString());
+	jsv::JSVEnvironment* jsvEnv = (jsv::JSVEnvironment*) user_data;
+	jsvEnv->EnterIsolate();
+	AVSValue result = jsvEnv->ImportScript(args[0].AsString());
+	jsvEnv->ExitIsolate();
 	return result;
 }
 
@@ -48,7 +60,7 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit2(IScri
 	// Function that runs a bit of JavaScript that's given as a string argument.
 	env->AddFunction("JavaScript", "s", JS_Script, jsvenv);
 	// Function that loads an external bit of JavaScript and executes it as above.
-	// env->AddFunction("LoadJavaScript", "s", JS_LoadScript, NULL);
+	env->AddFunction("ImportJS", "s", JS_Import, jsvenv);
 	// Canvas API functions
 	// env->AddFunction("Canvas", "s", JS_Canvas, NULL);
 	// env->AddFunction("LoadCanvas", "s", JS_LoadCanvas, NULL);

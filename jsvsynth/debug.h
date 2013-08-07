@@ -26,3 +26,5 @@
 #define TRACE(fmt, ...)	do { } while(0)
 
 #endif
+
+//#define TRACE_CONVERSIONS

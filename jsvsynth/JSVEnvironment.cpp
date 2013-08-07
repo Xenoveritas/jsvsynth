@@ -22,6 +22,7 @@
 #include "JSVEnvironment.h"
 #include "Clip.h"
 #include "Function.h"
+#include "util.h"
 
 using namespace v8;
 
@@ -181,6 +182,12 @@ void ThrowErrorInAviSynth(IScriptEnvironment* env, Isolate* isolate, TryCatch* t
 	}
 }
 
+#ifdef TRACE_CONVERSIONS
+# define TRACE_CONV		TRACE
+#else
+# define TRACE_CONV(fmt, ...)	do {} while(0)
+#endif
+
 Handle<Value> JSVEnvironment::ConvertToJS(AVSValue value) {
 	if (!value.Defined()) {
 		return v8::Null();
@@ -210,26 +217,40 @@ Handle<Value> JSVEnvironment::ConvertToJS(AVSValue value) {
 }
 
 AVSValue JSVEnvironment::ConvertToAVS(Handle<Value> value) {
-	TRACE("Converting value to AviSynth value...\n");
+#ifdef TRACE_CONVERSIONS
+# ifdef _DEBUG
+	{
+		v8::HandleScope scope(isolate);
+		v8::String::Utf8Value utf8(value);
+		TRACE("Converting [%s] to AviSynth\n", *utf8);
+	}
+# endif
+#endif
 	if (value.IsEmpty()) {
-		TRACE("Value is empty, going with undefined!\n");
+		TRACE_CONV("Value is empty, going with undefined!\n");
 		return AVSValue();
 	}
-	TRACE("Checking value...\n");
 	if (value->IsString()) {
+		TRACE_CONV("-> to string\n");
 		String::Utf8Value utf8str(value);
 		return AVSValue(avisynthEnv->SaveString(ToCString(utf8str)));
 	} else if (value->IsInt32()) {
+		TRACE_CONV("-> to int32\n");
 		return AVSValue(value->Int32Value());
 	} else if (value->IsUint32()) {
+		TRACE_CONV("-> to uint32\n");
 		return AVSValue((int) value->Uint32Value());
 	} else if (value->IsNumber()) {
+		TRACE_CONV("-> to number\n");
 		return AVSValue(value->NumberValue());
 	} else if (value->IsBoolean()) {
+		TRACE_CONV("-> to boolean\n");
 		return AVSValue(value->BooleanValue());
 	} else if (value->IsObject() && JSClip::IsWrappedClip(value->ToObject())) {
+		TRACE_CONV("-> unwrapping clip\n");
 		return AVSValue(JSClip::UnwrapClip(value->ToObject()));
 	} else {
+		TRACE_CONV("Conversion failed!\n");
 		String::Utf8Value utf8str(value);
 		return AVSValue(avisynthEnv->SaveString(ToCString(utf8str)));
 	}
@@ -237,30 +258,77 @@ AVSValue JSVEnvironment::ConvertToAVS(Handle<Value> value) {
 
 AVSValue JSVEnvironment::RunScript(const char* source, const char* filename) {
 	TRACE("Running script [\n%s\n]\n", source);
+	// We need to create scopes to do the conversions to/from
+	v8::HandleScope scope(isolate);
+	v8::Context::Scope context_scope(isolate, scriptingContext);
+	// And then throw it to the generic handler
+	v8::Handle<v8::Value> value = RunScript(v8::String::New(source), v8::String::New(filename), true);
+	TRACE("Script completed.\n");
+	AVSValue avsvalue = ConvertToAVS(value);
+	TRACE("Conversion complete.\n");
+	return avsvalue;
+}
+
+v8::Handle<v8::Value> JSVEnvironment::RunScript(v8::Handle<v8::String> source, v8::Handle<v8::String> filename, bool raiseErrorsInAviSynth) {
+	// Create the scopes
 	HandleScope scope(isolate);
 	Context::Scope context_scope(isolate, scriptingContext);
+	// Start a try/catch block
 	TryCatch try_catch;
-	Handle<String> v8source = String::New(source);
-	Handle<String> v8filename = String::New(filename);
-	Handle<Script> script = Script::Compile(v8source, v8filename);
+	// Compile the script
+	Handle<Script> script = Script::Compile(source, filename);
 	if (script.IsEmpty()) {
 		TRACE("Error compiling script.\n");
-		ThrowErrorInAviSynth(avisynthEnv, isolate, &try_catch);
+		if (raiseErrorsInAviSynth) {
+			ThrowErrorInAviSynth(avisynthEnv, isolate, &try_catch);
+		} else {
+			try_catch.ReThrow();
+		}
 	} else {
 		TRACE("Running script...\n");
 		Handle<Value> result = script->Run();
 		if (result.IsEmpty()) {
 			// In this case, we should always have caught an exception
 			TRACE("Script threw error.\n");
-			ThrowErrorInAviSynth(avisynthEnv, isolate, &try_catch);
+			if (raiseErrorsInAviSynth) {
+				ThrowErrorInAviSynth(avisynthEnv, isolate, &try_catch);
+			} else {
+				try_catch.ReThrow();
+			}
 		} else {
 			String::Utf8Value utf8str(result);
 			TRACE("Script result: %s\n", *utf8str ? *utf8str : "<conversion error>");
-			return ConvertToAVS(result);
+			return scope.Close(result);
 		}
 	}
 	// If we've managed to fall through here, something has gone wrong, but return something anyway
-	return AVSValue(false);
+	return v8::Undefined();
+}
+
+v8::Handle<v8::Value> JSVEnvironment::ImportScript(v8::Handle<v8::String> filename, bool raiseErrorsInAviSynth) {
+	// Load the script from the file system.
+	// Need a handle scope for the strings we're about to allocate
+	v8::HandleScope scope(isolate);
+	v8::String::Utf8Value utf8filename(filename);
+	v8::Handle<v8::String> source = ReadFile(*utf8filename);
+	if (source.IsEmpty()) {
+		// Indicates that the file load failed. TODO: Handle this appropriately.
+		if (raiseErrorsInAviSynth) {
+			avisynthEnv->ThrowError("Unable to load file \"%s\"", *utf8filename);
+		}
+	} else {
+		// FIXME: Strictly speaking, we should be running the script in a new context.
+		// We don't.
+		return scope.Close(RunScript(source, filename, raiseErrorsInAviSynth));
+	}
+	return v8::Undefined();
+}
+
+AVSValue JSVEnvironment::ImportScript(const char* filename) {
+	v8::HandleScope scope(isolate);
+	// We also need a context scope to do the conversion
+	v8::Context::Scope context_scope(isolate, scriptingContext);
+	return ConvertToAVS(ImportScript(v8::String::New(filename), true));
 }
 
 };
@@ -269,7 +337,7 @@ AVSValue __cdecl InvokeJSFunction(AVSValue args, void* user_data, IScriptEnviron
 	TRACE("Invoke JavaScript from AviSynth\n");
 	// Grab the jsfunc...
 	jsv::JSFunction* jsfunc = (jsv::JSFunction*) user_data;
-	jsfunc->GetEnvironment()->GetIsolate()->Enter();
+	jsfunc->GetEnvironment()->EnterIsolate();
 	// Our signature is ".*", our first argument will likely be an array, which is the
 	// actual values we want. Which is documented nowhere, really, but there you go.
 	if (args.IsArray() && args.ArraySize() > 0 && args[0].IsArray()) {
@@ -278,6 +346,6 @@ AVSValue __cdecl InvokeJSFunction(AVSValue args, void* user_data, IScriptEnviron
 	// User data (should) be a JSFunction, allowing us to just do this:
 	AVSValue result = ((jsv::JSFunction*)user_data)->Invoke(args);
 	TRACE("Returning back to AviSynth\n");
-	jsfunc->GetEnvironment()->GetIsolate()->Exit();
+	jsfunc->GetEnvironment()->ExitIsolate();
 	return result;
 }

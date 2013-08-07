@@ -31,8 +31,13 @@ public:
 	JSVEnvironment(IScriptEnvironment* env);
 	~JSVEnvironment();
 	AVSValue RunScript(const char* source, const char* filename);
+	v8::Handle<v8::Value> RunScript(v8::Handle<v8::String> source, v8::Handle<v8::String> filename, bool raiseErrorsInAviSynth=false);
+	v8::Handle<v8::Value> ImportScript(v8::Handle<v8::String> filename, bool raiseErrorsInAviSynth=false);
+	AVSValue ImportScript(const char* filename);
 	IScriptEnvironment* GetAVSScriptEnvironment() { return avisynthEnv; }
 	v8::Isolate* GetIsolate() { return isolate; }
+	void EnterIsolate() { isolate->Enter(); }
+	void ExitIsolate() { isolate->Exit(); }
 	v8::Handle<v8::Context> GetContext() { return v8::Local<v8::Context>::New(isolate, scriptingContext); }
 	/**
 	 * Convert a value from AviSynth into a V8 value. A handle scope must already exist.
