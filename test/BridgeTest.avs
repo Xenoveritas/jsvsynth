@@ -7,6 +7,10 @@ val_i = 42
 val_f = 3.14159
 val_s = "hello world"
 
+function val_func(string s) {
+    return "hello " + s
+}
+
 JavaScript("""
 var b = avisynth.val_b;
 assert(typeof b == "boolean", "Boolean not wrapped as boolean");
@@ -20,6 +24,11 @@ assert(Math.abs(f - 3.14159) < 0.000005, "Float value did not enter (got " + f +
 var s = avisynth.val_s;
 assert(typeof s == "string", "String not wrapped as string");
 assert(s === "hello world", "String value is wrong");
+var func = avisynth.val_func;
+// assert(typeof func == 'function', 'Function not wrapped as function');
+// For now, just verify we can invoke it at all
+assert(func("JavaScript") == "hello JavaScript", "Function not invoked")
+
 
 // And now bridge the other way
 avisynth.val_b = false

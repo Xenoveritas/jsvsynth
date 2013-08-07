@@ -67,6 +67,13 @@ void JSClip::DestroySelf(v8::Isolate* isolate, v8::Persistent<v8::Object>* self,
 	self->Dispose();
 	delete c;
 }
+void JSClip::ClipConstructor(const v8::FunctionCallbackInfo<v8::Value>& info) {
+	// Does nothing, probably will never do anything, but whatever
+}
+
+void JSClip::ToString(const v8::FunctionCallbackInfo<v8::Value>& info) {
+	info.GetReturnValue().Set(v8::String::New("[AviSynth Clip]"));
+}
 
 #define JSCLIP_PROPERTY_GETTER_INT(FNAME, PNAME)	void JSClip:: FNAME ## Getter (v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info) { \
 	JSClip* clip = UnwrapSelf(info.Holder()); \
@@ -186,7 +193,9 @@ void JSClip::frameRatioGetter(v8::Local<v8::String> name, const v8::PropertyCall
 
 v8::Handle<v8::ObjectTemplate> JSClip::CreateObjectTemplate(v8::Handle<v8::Context> context) {
 	v8::HandleScope scope(context->GetIsolate());
-	v8::Handle<v8::ObjectTemplate> templ = v8::ObjectTemplate::New();
+	v8::Handle<v8::FunctionTemplate> constr = v8::FunctionTemplate::New(ClipConstructor);
+	constr->SetClassName(v8::String::New("Clip"));
+	v8::Handle<v8::ObjectTemplate> templ = constr->PrototypeTemplate();
 	// We have one internal field:
 	templ->SetInternalFieldCount(1);
 	// The list of clip properties from AviSynth:
@@ -219,6 +228,8 @@ v8::Handle<v8::ObjectTemplate> JSClip::CreateObjectTemplate(v8::Handle<v8::Conte
 	// And our invented propeties:
 	JSCLIP_ADD_PROPERTY(colorSpace);
 	JSCLIP_ADD_PROPERTY(frameRatio);
+	v8::Handle<v8::FunctionTemplate> toString = v8::FunctionTemplate::New(ToString);
+	templ->Set("toString", toString);
 	return scope.Close(templ);
 }
 

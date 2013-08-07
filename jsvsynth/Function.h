@@ -23,19 +23,37 @@ namespace jsv {
 
 class JSVEnvironment;
 
-class WrappedFunction {
+/**
+ * Class that exposes an AviSynth function to JavaScript.
+ */
+class AVSFunction {
 public:
-	WrappedFunction(JSVEnvironment* env, const char* name);
-	~WrappedFunction();
+	AVSFunction(JSVEnvironment* env, const char* name);
+	~AVSFunction();
 	v8::Handle<v8::Object> NewInstance(v8::Handle<v8::ObjectTemplate>);
-	static v8::Handle<v8::ObjectTemplate> CreateObjectTemplate();
+	static v8::Handle<v8::ObjectTemplate> CreateTemplate();
 private:
-	static WrappedFunction* UnwrapSelf(v8::Handle<v8::Object>);
-	static void DestroySelf(v8::Isolate* isolate, v8::Persistent<v8::Object>* self, WrappedFunction* c);
+	static AVSFunction* UnwrapSelf(v8::Handle<v8::Object>);
+	static void DestroySelf(v8::Isolate* isolate, v8::Persistent<v8::Object>* self, AVSFunction* c);
+	static void GetAvisynthName(v8::Local<v8::String>, const v8::PropertyCallbackInfo<v8::Value>&);
 	static void InvokeFunction(const v8::FunctionCallbackInfo<v8::Value>& args);
 	v8::Persistent<v8::Object> jsSelf;
 	const char* avsName;
 	JSVEnvironment* jsvEnv;
+};
+
+/**
+ * Wrap the other way, exposing a JavaScript function to AviSynth.
+ */
+class JSFunction {
+public:
+	JSFunction(JSVEnvironment* env, v8::Handle<v8::Function> func);
+	~JSFunction();
+	v8::Handle<v8::Value> Invoke(int argc, v8::Handle<v8::Value> args[]);
+	AVSValue Invoke(AVSValue args);
+private:
+	v8::Persistent<v8::Function> func;
+	JSVEnvironment* env;
 };
 
 }; // namespace jsv

@@ -36,6 +36,8 @@ public:
 private:
 	static JSClip* UnwrapSelf(v8::Handle<v8::Object>);
 	static void DestroySelf(v8::Isolate* isolate, v8::Persistent<v8::Object>* self, JSClip* c);
+	static void ClipConstructor(const v8::FunctionCallbackInfo<v8::Value>&);
+	static void ToString(const v8::FunctionCallbackInfo<v8::Value>&);
 	v8::Persistent<v8::Object> jsSelf;
 
 #define JSCLIP_PROP_GETTER(NAME)	static void JSClip:: NAME ## Getter(v8::Local<v8::String>, const v8::PropertyCallbackInfo<v8::Value>&)

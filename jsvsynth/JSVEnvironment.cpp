@@ -24,7 +24,8 @@
 #include "Function.h"
 
 using namespace v8;
-using namespace std;
+
+AVSValue __cdecl InvokeJSFunction(AVSValue args, void* user_data, IScriptEnvironment* env);
 
 namespace jsv
 {
@@ -40,9 +41,14 @@ JSVEnvironment::JSVEnvironment(IScriptEnvironment* env) : avisynthEnv(env) {
 	context->Global()->Set(String::New("avisynth"), CreateAviSynthGlobal());
 	// And create our clip template for later.
 	clipTemplate.Reset(isolate, JSClip::CreateObjectTemplate(context));
-	avsFuncWrapperTemplate.Reset(isolate, WrappedFunction::CreateObjectTemplate());
+	avsFuncWrapperTemplate.Reset(isolate, AVSFunction::CreateTemplate());
 }
 JSVEnvironment::~JSVEnvironment() {
+	TRACE("Removing stuff...\n");
+	for (std::list<void*>::iterator i = stuffToDelete.begin(); i != stuffToDelete.end(); i++) {
+		TRACE("Killing %p\n", *i);
+		delete *i;
+	}
 	clipTemplate.Dispose();
 	scriptingContext.Dispose();
 }
@@ -113,7 +119,7 @@ void JSVEnvironment::AviSynthGet(v8::Local<v8::String> name, const v8::PropertyC
 		// use the function wrapper
 		if (env->avisynthEnv->FunctionExists(*utf8str)) {
 			// Wrap it up
-			WrappedFunction* wrapped = new WrappedFunction(env, *utf8str);
+			AVSFunction* wrapped = new AVSFunction(env, *utf8str);
 			Handle<ObjectTemplate> templ = v8::Local<ObjectTemplate>::New(env->isolate, env->avsFuncWrapperTemplate);
 			Handle<Object> result = wrapped->NewInstance(templ);
 			info.GetReturnValue().Set(result);
@@ -133,6 +139,17 @@ void JSVEnvironment::AviSynthSet(v8::Local<v8::String> name, v8::Local<v8::Value
 	// Somewhat simpler (maybe)
 	JSVEnvironment *env = UnwrapSelf(info.Holder());
 	String::Utf8Value utf8name(name);
+	if (value->IsFunction()) {
+		TRACE("Wrapping function from JavaScript\n");
+		// This is "special", we need to wrap the function to make it available.
+		v8::Handle<v8::Function> func = v8::Handle<v8::Function>::Cast(value);
+		JSFunction* res = new JSFunction(env, func);
+		env->stuffToDelete.push_back(res);
+		// . = any type, * = one or more, so ".*" is the signature for all types, which
+		// is what we want for this wrapper
+		env->avisynthEnv->AddFunction(*utf8name, ".*", InvokeJSFunction, res);
+		return;
+	}
 	AVSValue avs_value = env->ConvertToAVS(value);
 	if (env->avisynthEnv->SetVar(*utf8name, avs_value)) {
 		// Value was created.
@@ -186,6 +203,12 @@ Handle<Value> JSVEnvironment::ConvertToJS(AVSValue value) {
 }
 
 AVSValue JSVEnvironment::ConvertToAVS(Handle<Value> value) {
+	TRACE("Converting value to AviSynth value...\n");
+	if (value.IsEmpty()) {
+		TRACE("Value is empty, going with undefined!\n");
+		return AVSValue();
+	}
+	TRACE("Checking value...\n");
 	if (value->IsString()) {
 		String::Utf8Value utf8str(value);
 		return AVSValue(avisynthEnv->SaveString(ToCString(utf8str)));
@@ -234,3 +257,11 @@ AVSValue JSVEnvironment::RunScript(const char* source, const char* filename) {
 }
 
 };
+
+AVSValue __cdecl InvokeJSFunction(AVSValue args, void* user_data, IScriptEnvironment* env) {
+	TRACE("Invoke JavaScript from AviSynth\n");
+	// User data (should) be a JSFunction, allowing us to just do this:
+	AVSValue result = ((jsv::JSFunction*)user_data)->Invoke(args);
+	TRACE("Returning back to AviSynth\n");
+	return result;
+}

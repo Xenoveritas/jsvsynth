@@ -22,7 +22,7 @@
 
 namespace jsv {
 
-WrappedFunction::WrappedFunction(JSVEnvironment* env, const char* name) : jsvEnv(env) {
+AVSFunction::AVSFunction(JSVEnvironment* env, const char* name) : jsvEnv(env) {
 	// Copy the string (the given string is from ???)
 	size_t len = strlen(name) + 1;
 	char* copy = new char[len];
@@ -30,39 +30,62 @@ WrappedFunction::WrappedFunction(JSVEnvironment* env, const char* name) : jsvEnv
 	avsName = copy;
 }
 
-WrappedFunction::~WrappedFunction() {
+AVSFunction::~AVSFunction() {
 	delete avsName;
 }
 
-v8::Handle<v8::Object> WrappedFunction::NewInstance(v8::Handle<v8::ObjectTemplate> templ) {
+v8::Handle<v8::Object> AVSFunction::NewInstance(v8::Handle<v8::ObjectTemplate> templ) {
 	v8::Handle<v8::Object> obj = templ->NewInstance();
 	obj->SetInternalField(0, v8::External::New(this));
+	jsSelf.Reset(v8::Isolate::GetCurrent(), obj);
+	jsSelf.MakeWeak<AVSFunction>(this, DestroySelf);
 	return obj;
 }
 
-v8::Handle<v8::ObjectTemplate> WrappedFunction::CreateObjectTemplate() {
+v8::Handle<v8::ObjectTemplate> AVSFunction::CreateTemplate() {
+	v8::HandleScope scope(v8::Isolate::GetCurrent());
 	v8::Handle<v8::ObjectTemplate> templ = v8::ObjectTemplate::New();
 	templ->SetInternalFieldCount(1);
 	templ->SetCallAsFunctionHandler(InvokeFunction);
-	return templ;
+	templ->SetAccessor(v8::String::New("avisynthName"), GetAvisynthName);
+	v8::TryCatch try_catch;
+	v8::Handle<v8::Script> script = v8::Script::Compile(v8::String::New("(function(){return \"function () { <AviSynth \"+this.avisynthName+\"> }\"})"));
+	if (script.IsEmpty()) {
+		v8::String::Utf8Value value(try_catch.Exception());
+		TRACE("Failed to create toString method! Exception: %s\n", *value);
+		// Throw up some sort of error
+	} else {
+		v8::Handle<v8::Value> res = script->Run();
+		if (res.IsEmpty()) {
+			TRACE("Failed to run scriptlet!\n");
+		} else {
+			TRACE("Setting result\n");
+			templ->Set("toString", res);
+		}
+	}
+	return scope.Close(templ);
 }
 
-WrappedFunction* WrappedFunction::UnwrapSelf(v8::Handle<v8::Object> obj) {
+AVSFunction* AVSFunction::UnwrapSelf(v8::Handle<v8::Object> obj) {
 	v8::Handle<v8::External> ext = v8::Handle<v8::External>::Cast(obj->GetInternalField(0));
 	void* ptr = ext->Value();
-	return static_cast<WrappedFunction*>(ptr);
+	return static_cast<AVSFunction*>(ptr);
 }
 
-void WrappedFunction::DestroySelf(v8::Isolate* isolate, v8::Persistent<v8::Object>* self, WrappedFunction* f) {
+void AVSFunction::DestroySelf(v8::Isolate* isolate, v8::Persistent<v8::Object>* self, AVSFunction* f) {
 	v8::HandleScope scope(isolate);
 	v8::Local<v8::Object>::New(isolate, (*self))->GetInternalField(0).Clear();
 	self->Dispose();
 	delete f;
 }
 
-void WrappedFunction::InvokeFunction(const v8::FunctionCallbackInfo<v8::Value>& args) {
+void AVSFunction::GetAvisynthName(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info) {
+	info.GetReturnValue().Set(v8::String::New(UnwrapSelf(info.This())->avsName));
+}
+
+void AVSFunction::InvokeFunction(const v8::FunctionCallbackInfo<v8::Value>& args) {
 	v8::HandleScope scope(args.GetIsolate());
-	WrappedFunction* wrapped = UnwrapSelf(args.This());
+	AVSFunction* wrapped = UnwrapSelf(args.This());
 	int argCount = args.Length();
 	AVSValue* avsArgs = NULL;
 	int namedArgCount = 0;
@@ -125,21 +148,50 @@ void WrappedFunction::InvokeFunction(const v8::FunctionCallbackInfo<v8::Value>& 
 	} else {
 		args.GetReturnValue().SetUndefined();
 	}
-	TRACE("Freeing %p...\n", avsArgs);
 	free(avsArgs);
-	TRACE("Frred.\n");
 	if (namedArgs != NULL) {
 		for (int i = 0; i < argCount; i++) {
-			TRACE("Checking %d...\n", i);
 			if (namedArgs[i] != NULL) {
-				TRACE("Freeing %i (%s)\n", i, namedArgs[i]);
 				free((void*)namedArgs[i]);
-				TRACE("Freed.\n");
 			}
 		}
 		free(namedArgs);
 	}
-	TRACE("All done.\n");
+}
+
+JSFunction::JSFunction(JSVEnvironment* aEnv, v8::Handle<v8::Function> aFunc) :
+	env(aEnv), func(aEnv->GetIsolate(), aFunc) {
+}
+JSFunction::~JSFunction() {
+	func.Dispose();
+}
+
+v8::Handle<v8::Value> JSFunction::Invoke(int argc, v8::Handle<v8::Value> argv[]) {
+	v8::HandleScope scope(env->GetIsolate());
+	v8::Context::Scope context_scope(env->GetContext());
+	v8::Local<v8::Function> local = v8::Local<v8::Function>::New(env->GetIsolate(), func);
+	return scope.Close(local->Call(env->GetContext()->Global(), argc, argv));
+}
+
+AVSValue JSFunction::Invoke(AVSValue args) {
+	v8::HandleScope scope(env->GetIsolate());
+	// Step 1: Convert values to JavaScript values
+	v8::Handle<v8::Value>* jsargs;
+	int argc = args.ArraySize();
+	jsargs = (v8::Handle<v8::Value>*) malloc(argc * sizeof(v8::Handle<v8::Value>));
+	for (int i = 0; i < argc; i++) {
+		jsargs[i] = env->ConvertToJS(args[i]);
+	}
+	v8::TryCatch try_catch;
+	v8::Handle<v8::Value> result = Invoke(argc, jsargs);
+	// Free now, we're done with them
+	free(jsargs);
+	if (result.IsEmpty()) {
+		TRACE("Error from JavaScript\n");
+		ThrowErrorInAviSynth(env->GetAVSScriptEnvironment(), env->GetIsolate(), &try_catch);
+		return AVSValue();
+	}
+	return env->ConvertToAVS(result);
 }
 
 }; // namespace jsv
