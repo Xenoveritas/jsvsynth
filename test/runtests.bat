@@ -25,12 +25,15 @@ EXIT /B 1
 
 REM TODO: Create this file based on a parameter or something.
 
-ECHO LoadPlugin("../Debug/jsvsynth.dll") > loadplugin.avsi
+REM Don't ask me why this needs to be a full path, but sometimes apparently it
+REM does. Other times AviSynth will happily load it as relative. So don't care
+REM at this point.
+ECHO LoadPlugin("%CD%\..\Debug\jsvsynth.dll")>loadplugin.avsi
 
 SET TEST_LOG=results.txt
 
-ECHO Test Results > %TEST_LOG%
-ECHO. >> %TEST_LOG%
+ECHO Test Results>%TEST_LOG%
+ECHO ============>>%TEST_LOG%
 
 SET TESTS_PASSED=0
 SET TESTS_FAILED=0
@@ -44,7 +47,7 @@ CALL EXECTEST.BAT sanity.avs
 IF %TESTS_PASSED%==1 GOTO EnvIsSane
 
 ECHO Sanity checks failed! Aborting test run.
-ECHO Sanity checks failed! Test run was aborted. >> %TEST_LOG%
+ECHO Sanity checks failed! Test run was aborted.>>%TEST_LOG%
 
 EXIT /B 1
 
@@ -54,8 +57,11 @@ FOR %%t IN (*test.avs) DO CALL EXECTEST.BAT %%t
 
 SET /A TESTS_TOTAL=%TESTS_PASSED%+%TESTS_FAILED%+%TESTS_ERRORED%
 
-ECHO -------- >> %TEST_LOG%
-ECHO %TESTS_PASSED% passed, %TESTS_FAILED% failed, %TESTS_ERRORED% errored >> %TEST_LOG%
+ECHO.>>%TEST_LOG%
+ECHO Test Results>>%TEST_LOG%
+ECHO ============>>%TEST_LOG%
+ECHO.>>%TEST_LOG%
+ECHO %TESTS_PASSED% passed, %TESTS_FAILED% failed, %TESTS_ERRORED% errored>>%TEST_LOG%
 
 ECHO --------
 ECHO %TESTS_PASSED% passed, %TESTS_FAILED% failed, %TESTS_ERRORED% errored
