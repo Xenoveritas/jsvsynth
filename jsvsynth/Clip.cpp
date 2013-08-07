@@ -22,12 +22,22 @@
 namespace jsv {
 
 JSClip::JSClip(PClip aClip, v8::Handle<v8::ObjectTemplate> objTemplate) : clip(aClip) {
+	if (objTemplate.IsEmpty()) {
+		TRACE("Object template not set!\n");
+	}
+	TRACE("Wrap clip\n");
 	v8::Handle<v8::Object> obj = objTemplate->NewInstance();
+	TRACE("Created instance\n");
 	v8::Handle<v8::External> ext = v8::External::New(this);
+	TRACE("Created external\n");
 	obj->SetInternalField(0, ext);
+	TRACE("Internal field set\n");
 	obj->SetHiddenValue(v8::String::New(JSCLIP_HIDDEN_PROP), v8::True());
+	TRACE("Hidden value set\n");
 	jsSelf.Reset(v8::Isolate::GetCurrent(), obj);
+	TRACE("Persistent set\n");
 	jsSelf.MakeWeak<JSClip>(this, DestroySelf);
+	TRACE("Clip wrapped.\n");
 }
 
 JSClip::~JSClip() {

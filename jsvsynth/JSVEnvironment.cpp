@@ -187,17 +187,24 @@ Handle<Value> JSVEnvironment::ConvertToJS(AVSValue value) {
 	} else if (value.IsString()) {
 		return String::New(value.AsString());
 	} else if (value.IsClip()) {
+		TRACE("Wrap clip from AviSynth\n");
 		// Here's the fun one - wrap it up
 		HandleScope scope(isolate);
 		JSClip* clip = new JSClip(value.AsClip(), Local<ObjectTemplate>::New(isolate, clipTemplate));
+		TRACE("Converted.\n");
 		return scope.Close(clip->GetObject(isolate));
 	} else if (value.IsInt()) {
+		// Int must be tested prior to float IsFloat() also returns true for ints
 		return Int32::New(value.AsInt());
 	} else if (value.IsFloat()) {
 		return Number::New(value.AsFloat());
 	} else if (value.IsBool()) {
 		return Boolean::New(value.AsBool());
+	} else if (value.IsArray()) {
+		TRACE("Error: attempting to convert array (not supported as it makes no sense)\n");
+		return String::New("<array>");
 	} else {
+		TRACE("Unknown type of AVS value %s\n", value.AsString("bad"));
 		return String::New("<conversion failure>");
 	}
 }
@@ -260,8 +267,17 @@ AVSValue JSVEnvironment::RunScript(const char* source, const char* filename) {
 
 AVSValue __cdecl InvokeJSFunction(AVSValue args, void* user_data, IScriptEnvironment* env) {
 	TRACE("Invoke JavaScript from AviSynth\n");
+	// Grab the jsfunc...
+	jsv::JSFunction* jsfunc = (jsv::JSFunction*) user_data;
+	jsfunc->GetEnvironment()->GetIsolate()->Enter();
+	// Our signature is ".*", our first argument will likely be an array, which is the
+	// actual values we want. Which is documented nowhere, really, but there you go.
+	if (args.IsArray() && args.ArraySize() > 0 && args[0].IsArray()) {
+		args = args[0];
+	}
 	// User data (should) be a JSFunction, allowing us to just do this:
 	AVSValue result = ((jsv::JSFunction*)user_data)->Invoke(args);
 	TRACE("Returning back to AviSynth\n");
+	jsfunc->GetEnvironment()->GetIsolate()->Exit();
 	return result;
 }

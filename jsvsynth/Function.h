@@ -51,6 +51,7 @@ public:
 	~JSFunction();
 	v8::Handle<v8::Value> Invoke(int argc, v8::Handle<v8::Value> args[]);
 	AVSValue Invoke(AVSValue args);
+	JSVEnvironment* GetEnvironment() { return env; }
 private:
 	v8::Persistent<v8::Function> func;
 	JSVEnvironment* env;

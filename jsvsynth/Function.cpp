@@ -161,6 +161,7 @@ void AVSFunction::InvokeFunction(const v8::FunctionCallbackInfo<v8::Value>& args
 
 JSFunction::JSFunction(JSVEnvironment* aEnv, v8::Handle<v8::Function> aFunc) :
 	env(aEnv), func(aEnv->GetIsolate(), aFunc) {
+	TRACE("Wrapped function with environment %p\n", aEnv);
 }
 JSFunction::~JSFunction() {
 	func.Dispose();
@@ -174,14 +175,21 @@ v8::Handle<v8::Value> JSFunction::Invoke(int argc, v8::Handle<v8::Value> argv[])
 }
 
 AVSValue JSFunction::Invoke(AVSValue args) {
+	TRACE("Invoking JavaScript using JSVEnvironment %p...\n", env);
 	v8::HandleScope scope(env->GetIsolate());
+	TRACE("Scope created\n");
+	v8::Context::Scope context_scope(env->GetContext());
+	TRACE("Context scope created\n");
 	// Step 1: Convert values to JavaScript values
 	v8::Handle<v8::Value>* jsargs;
 	int argc = args.ArraySize();
+	TRACE("Converting %d arguments...\n", argc);
 	jsargs = (v8::Handle<v8::Value>*) malloc(argc * sizeof(v8::Handle<v8::Value>));
 	for (int i = 0; i < argc; i++) {
+		TRACE("Convert argument %d\n", i);
 		jsargs[i] = env->ConvertToJS(args[i]);
 	}
+	TRACE("Done\n");
 	v8::TryCatch try_catch;
 	v8::Handle<v8::Value> result = Invoke(argc, jsargs);
 	// Free now, we're done with them

@@ -81,6 +81,52 @@ This is one of the reasons why you can't use `for(var i in avisynth)` to iterate
 over variables in AviSynth. (The primary reason is that the AviSynth API offers
 absolutely no way to pull the list of variables in any case.)
 
+Another weird caveat is passing functions back to AviSynth. With most values,
+you can actually use the evaluation of the JavaScript block:
+
+    Subtitle(BlankClip(), String(JavaScript("12 + 30")))
+
+However, you can't pass functions back in this fashion, as this doesn't make
+sense in AviSynth: functions aren't "variables" per se, they're instead in a
+separate (of sorts) namespace. (If you do write a bit of JavaScript that
+evaluates to a function, the result will be the function converted to a string.)
+
+This doesn't mean you can't use JavaScript functions from AviSynth: you just
+have to "export" them using the AviSynth object:
+
+    JavaScript("""
+      avisynth.fromjs = function(str) {
+        return "Hello " + str.substring(0,1).toUpperCase() + str.substring(1);
+      }
+    """)
+    Subtitle(BlankClip(), FromJS("world"))
+
+Note that (at present) there's no way to specify a function's signature or to
+accept named arguments from AviSynth (as those rely on a signature).
+
+Another caveat with this is that using functions in this way will (potentially)
+leak memory: these functions are bound to the AviSynth environment and can
+never be collected while the script runs. (I don't think this is any real
+practical concern, but it's worth noting somewhere.) Theoretically everything
+should be collected when AviSynth shuts down, but I haven't verified this.
+
+### Animating With JavaScript
+
+It may be tempting to write a JavaScript function within an AviSynth function
+and use that within `Animate`. **Don't do that.** The JavaScript function will
+be recompiled every single frame and you won't get any of the speed advantages
+of V8's JIT.
+
+Instead, use the above method of exporting functions and animate that way:
+
+    JavaScript("""
+      avisynth.animfun = function(clip, str, y) {
+        return avisynth.Subtitle(clip, str, {y:y});
+      }
+    """)
+    c = BlankClip()
+    Animate(0, 50, "animfun", c,"Scrolling",0, c,"Scrolling",50)
+
 Building the Plugin
 -------------------
 
