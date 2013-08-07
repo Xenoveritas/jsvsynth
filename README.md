@@ -41,7 +41,7 @@ You can almost do the reverse, but with one caveat:
     JavaScript("""
     avisynth.avsvalue = "Hello " + "AviSynth!";
     """)
-    Subtitle(BlankClip(color=$FF), avsvalue);
+    Subtitle(BlankClip(color=$FF), avsvalue)
 
 The value has to be set to something before it will work. Otherwise, even though
 the value will be set, AviSynth will give an "I don't know what avsvalue means"

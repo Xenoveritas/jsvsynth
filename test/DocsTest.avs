@@ -16,7 +16,7 @@ avsvalue = 0
 JavaScript("""
 avisynth.avsvalue = "Hello " + "AviSynth!";
 """)
-Subtitle(BlankClip(color=$FF), avsvalue);
+Subtitle(BlankClip(color=$FF), avsvalue)
 
 Subtitle(BlankClip(), String(JavaScript("12 + 30")))
 
