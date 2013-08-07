@@ -18,7 +18,7 @@
 #include "stdafx.h"
 #include "JSVEnvironment.h"
 
-void __cdecl jvs_Shutdown(void* user_data, IScriptEnvironment* env) {
+void __cdecl jsv_Shutdown(void* user_data, IScriptEnvironment* env) {
 	TRACE("Shutting down V8 and freeing resources...\n");
 	// Destroy the environment.
 	delete ((jsv::JSVEnvironment*)user_data);
@@ -62,6 +62,7 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit2(IScri
 	// s - String
 	// b - boolean
 
+	env->AtExit(jsv_Shutdown, jsvenv);
 	// A freeform name of the plugin.
 	return "'JSVSynth' JavaScript Video Synth";
 }
