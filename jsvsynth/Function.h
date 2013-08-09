@@ -33,8 +33,6 @@ public:
 	v8::Handle<v8::Object> NewInstance(v8::Handle<v8::ObjectTemplate>);
 	static v8::Handle<v8::ObjectTemplate> CreateTemplate();
 private:
-	static AVSFunction* UnwrapSelf(v8::Handle<v8::Object>);
-	static void DestroySelf(v8::Isolate* isolate, v8::Persistent<v8::Object>* self, AVSFunction* c);
 	static void GetAvisynthName(v8::Local<v8::String>, const v8::PropertyCallbackInfo<v8::Value>&);
 	static void InvokeFunction(const v8::FunctionCallbackInfo<v8::Value>& args);
 	v8::Persistent<v8::Object> jsSelf;

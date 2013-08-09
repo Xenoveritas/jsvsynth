@@ -24,22 +24,22 @@ You can then use AviSynth's multi-line string blocks to write your actual
 JavaScript code:
 
     JavaScript("""
-    avisynth.Subtitle(avisynth.BlankClip({color:0xFF}), "Hello from JavaScript!")
+    avs.Subtitle(avs.BlankClip({color:0xFF}), "Hello from JavaScript!")
     """)
 
-The JavaScript object `avisynth` offers access to any AviSynth variable or
+The JavaScript object `avs` offers access to any AviSynth variable or
 function from within JavaScript:
 
     avsvalue = "Set in AviSynth"
     JavaScript("""
-    avisynth.Subtitle(avisynth.BlankClip({color:0xFF}), avisynth.avsvalue)
+    avs.Subtitle(avs.BlankClip({color:0xFF}), avs.avsvalue)
     """)
 
 You can almost do the reverse, but with one caveat:
 
     avsvalue = 0
     JavaScript("""
-    avisynth.avsvalue = "Hello " + "AviSynth!";
+    avs.avsvalue = "Hello " + "AviSynth!";
     """)
     Subtitle(BlankClip(color=$FF), avsvalue)
 
@@ -59,7 +59,7 @@ differently when using JavaScript than they would in AviSynth.
 1. At present, it's not possible to do something like `clip.Trim(50)`. A future
    update will likely attempt to make code like that possible.
 2. Named variables are handled as an object, as demonstrated by the
-   `avisynth.BlankClip({color:0xFF})` above. This value must always be the
+   `avs.BlankClip({color:0xFF})` above. This value must always be the
    **last** value given. Otherwise, it'll be translated into a string (likely
    `[object Object]`).
 3. Conversions from JavaScript don't take into account the signature of the
@@ -70,14 +70,14 @@ differently when using JavaScript than they would in AviSynth.
 
 ### Other Weird Caveats
 
-AviSynth is case insensitive, and the `avisynth` object will reflect that:
+AviSynth is case insensitive, and the `avs` object will reflect that:
 
-`avisynth.blankclip()` is the same as `avisynth.BlankClip()`.
+`avs.blankclip()` is the same as `avs.BlankClip()`.
 
-JavaScript is not: `avisynth.blankclip()` is **not** the same as
-`AviSynth.blankclip()`!
+JavaScript is not: `avs.blankclip()` is **not** the same as
+`AVS.blankclip()`!
 
-This is one of the reasons why you can't use `for(var i in avisynth)` to iterate
+This is one of the reasons why you can't use `for(var i in avs)` to iterate
 over variables in AviSynth. (The primary reason is that the AviSynth API offers
 absolutely no way to pull the list of variables in any case.)
 
@@ -92,10 +92,10 @@ separate (of sorts) namespace. (If you do write a bit of JavaScript that
 evaluates to a function, the result will be the function converted to a string.)
 
 This doesn't mean you can't use JavaScript functions from AviSynth: you just
-have to "export" them using the AviSynth object:
+have to "export" them using the `avs` object:
 
     JavaScript("""
-      avisynth.fromjs = function(str) {
+      avs.fromjs = function(str) {
         return "Hello " + str.substring(0,1).toUpperCase() + str.substring(1);
       }
     """)
@@ -120,8 +120,8 @@ of V8's JIT.
 Instead, use the above method of exporting functions and animate that way:
 
     JavaScript("""
-      avisynth.animfun = function(clip, str, y) {
-        return avisynth.Subtitle(clip, str, {y:y});
+      avs.animfun = function(clip, str, y) {
+        return avs.Subtitle(clip, str, {y:y});
       }
     """)
     c = BlankClip()

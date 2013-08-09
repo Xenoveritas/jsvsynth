@@ -5,7 +5,7 @@ Import("tests.avsi")
 c = BlankClip()
 
 JavaScript("""
-var c = avisynth.c;
+var c = avs.c;
 assert(c.width == 640, "Width is wrong (" + c.width + ")");
 assert(c.height == 480, "Height is wrong (" + c.height + ")");
 console.log(typeof c)

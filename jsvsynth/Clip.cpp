@@ -25,19 +25,12 @@ JSClip::JSClip(PClip aClip, v8::Handle<v8::ObjectTemplate> objTemplate) : clip(a
 	if (objTemplate.IsEmpty()) {
 		TRACE("Object template not set!\n");
 	}
-	TRACE("Wrap clip\n");
 	v8::Handle<v8::Object> obj = objTemplate->NewInstance();
-	TRACE("Created instance\n");
 	v8::Handle<v8::External> ext = v8::External::New(this);
-	TRACE("Created external\n");
 	obj->SetInternalField(0, ext);
-	TRACE("Internal field set\n");
 	obj->SetHiddenValue(v8::String::New(JSCLIP_HIDDEN_PROP), v8::True());
-	TRACE("Hidden value set\n");
 	jsSelf.Reset(v8::Isolate::GetCurrent(), obj);
-	TRACE("Persistent set\n");
-	jsSelf.MakeWeak<JSClip>(this, DestroySelf);
-	TRACE("Clip wrapped.\n");
+	jsSelf.MakeWeak<JSClip>(this, DestroySelf<JSClip>);
 }
 
 JSClip::~JSClip() {
@@ -57,26 +50,13 @@ PClip JSClip::UnwrapClip(v8::Handle<v8::Object> obj) {
 	v8::HandleScope scope(v8::Isolate::GetCurrent());
 	v8::Handle<v8::Value> value = obj->GetHiddenValue(v8::String::New(JSCLIP_HIDDEN_PROP));
 	if ((!value.IsEmpty()) && value->IsBoolean() && value->IsTrue()) {
-		JSClip* clip = UnwrapSelf(obj);
+		JSClip* clip = UnwrapSelf<JSClip>(obj);
 		return clip->clip;
 	} else {
 		return NULL;
-	}
-	
+	}	
 }
 
-JSClip* JSClip::UnwrapSelf(v8::Handle<v8::Object> obj) {
-	v8::Handle<v8::External> ext = v8::Handle<v8::External>::Cast(obj->GetInternalField(0));
-	void* ptr = ext->Value();
-	return static_cast<JSClip*>(ptr);
-}
-
-void JSClip::DestroySelf(v8::Isolate* isolate, v8::Persistent<v8::Object>* self, JSClip* c) {
-	v8::HandleScope scope(isolate);
-	v8::Local<v8::Object>::New(isolate, (*self))->GetInternalField(0).Clear();
-	self->Dispose();
-	delete c;
-}
 void JSClip::ClipConstructor(const v8::FunctionCallbackInfo<v8::Value>& info) {
 	// Does nothing, probably will never do anything, but whatever
 }
@@ -85,29 +65,29 @@ void JSClip::ToString(const v8::FunctionCallbackInfo<v8::Value>& info) {
 	info.GetReturnValue().Set(v8::String::New("[AviSynth Clip]"));
 }
 
-#define JSCLIP_PROPERTY_GETTER_INT(FNAME, PNAME)	void JSClip:: FNAME ## Getter (v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info) { \
-	JSClip* clip = UnwrapSelf(info.Holder()); \
+#define JSCLIP_PROPERTY_GETTER_INT(FNAME, PNAME)	void JSClip::JSGet ## FNAME (v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info) { \
+	JSClip* clip = UnwrapSelf<JSClip>(info.Holder()); \
 	info.GetReturnValue().Set(v8::Int32::New(clip->clip->GetVideoInfo().PNAME)); \
 }
 
-#define JSCLIP_PROPERTY_GETTER_UINT(FNAME, PNAME)	void JSClip:: FNAME ## Getter (v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info) { \
-	JSClip* clip = UnwrapSelf(info.Holder()); \
+#define JSCLIP_PROPERTY_GETTER_UINT(FNAME, PNAME)	void JSClip::JSGet ## FNAME (v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info) { \
+	JSClip* clip = UnwrapSelf<JSClip>(info.Holder()); \
 	info.GetReturnValue().Set(v8::Int32::NewFromUnsigned(clip->clip->GetVideoInfo().PNAME)); \
 }
 
-#define JSCLIP_PROPERTY_GETTER_BOOL(FNAME, PNAME)	void JSClip:: FNAME ## Getter (v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info) { \
-	JSClip* clip = UnwrapSelf(info.Holder()); \
+#define JSCLIP_PROPERTY_GETTER_BOOL(FNAME, PNAME)	void JSClip::JSGet ## FNAME (v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info) { \
+	JSClip* clip = UnwrapSelf<JSClip>(info.Holder()); \
 	info.GetReturnValue().Set(v8::Boolean::New(clip->clip->GetVideoInfo().PNAME())); \
 }
 
-#define JSCLIP_PROPERTY_GETTER_NOTBOOL(FNAME, PNAME)	void JSClip:: FNAME ## Getter (v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info) { \
-	JSClip* clip = UnwrapSelf(info.Holder()); \
+#define JSCLIP_PROPERTY_GETTER_NOTBOOL(FNAME, PNAME)	void JSClip::JSGet ## FNAME (v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info) { \
+	JSClip* clip = UnwrapSelf<JSClip>(info.Holder()); \
 	info.GetReturnValue().Set(v8::Boolean::New(clip->clip->GetVideoInfo().PNAME())); \
 }
 
-void JSClip::widthGetter(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info) {
+void JSClip::JSGetwidth(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info) {
 	// Extract the C++ request object from the JavaScript wrapper.
-	JSClip* clip = UnwrapSelf(info.Holder());
+	JSClip* clip = UnwrapSelf<JSClip>(info.Holder());
 
 	info.GetReturnValue().Set(v8::Int32::New(clip->clip->GetVideoInfo().width));
 }
@@ -134,40 +114,40 @@ JSCLIP_PROPERTY_GETTER_BOOL(hasVideo, HasVideo);
 
 // And the rest aren't easily macroed.
 
-void JSClip::frameRateGetter(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info) {
-	JSClip* clip = UnwrapSelf(info.Holder());
+void JSClip::JSGetframeRate(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info) {
+	JSClip* clip = UnwrapSelf<JSClip>(info.Holder());
 	const VideoInfo& vi = clip->clip->GetVideoInfo();
 	info.GetReturnValue().Set(v8::Number::New(((double)vi.fps_numerator)/((double)vi.fps_denominator)));
 }
 
-void JSClip::audioLengthGetter(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info) {
-	JSClip* clip = UnwrapSelf(info.Holder());
+void JSClip::JSGetaudioLength(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info) {
+	JSClip* clip = UnwrapSelf<JSClip>(info.Holder());
 	const VideoInfo& vi = clip->clip->GetVideoInfo();
 	info.GetReturnValue().Set(v8::Number::New((double)vi.num_frames));
 }
 
-void JSClip::audioBitsGetter(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info) {
-	JSClip* clip = UnwrapSelf(info.Holder());
+void JSClip::JSGetaudioBits(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info) {
+	JSClip* clip = UnwrapSelf<JSClip>(info.Holder());
 	const VideoInfo& vi = clip->clip->GetVideoInfo();
 	info.GetReturnValue().Set(v8::Int32::New(vi.BytesPerAudioSample() * 8));
 }
 
-void JSClip::isAudioFloatGetter(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info) {
-	JSClip* clip = UnwrapSelf(info.Holder());
+void JSClip::JSGetisAudioFloat(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info) {
+	JSClip* clip = UnwrapSelf<JSClip>(info.Holder());
 	const VideoInfo& vi = clip->clip->GetVideoInfo();
 	info.GetReturnValue().Set(v8::Boolean::New(vi.IsSampleType(SAMPLE_FLOAT)));
 }
 
-void JSClip::isAudioIntGetter(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info) {
-	JSClip* clip = UnwrapSelf(info.Holder());
+void JSClip::JSGetisAudioInt(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info) {
+	JSClip* clip = UnwrapSelf<JSClip>(info.Holder());
 	const VideoInfo& vi = clip->clip->GetVideoInfo();
 	info.GetReturnValue().Set(v8::Boolean::New(!vi.IsSampleType(SAMPLE_FLOAT)));
 }
 
 // A made-up property, the color space as a string:
-void JSClip::colorSpaceGetter(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info) {
+void JSClip::JSGetcolorSpace(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info) {
 	// Extract the C++ request object from the JavaScript wrapper.
-	JSClip* clip = UnwrapSelf(info.Holder());
+	JSClip* clip = UnwrapSelf<JSClip>(info.Holder());
 	const VideoInfo& vi = clip->clip->GetVideoInfo();
 	const char* res;
 
@@ -187,9 +167,9 @@ void JSClip::colorSpaceGetter(v8::Local<v8::String> name, const v8::PropertyCall
 }
 
 // A made-up property, the frame rate as a pair:
-void JSClip::frameRatioGetter(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info) {
+void JSClip::JSGetframeRatio(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info) {
 	// Extract the C++ request object from the JavaScript wrapper.
-	JSClip* clip = UnwrapSelf(info.Holder());
+	JSClip* clip = UnwrapSelf<JSClip>(info.Holder());
 	const VideoInfo& vi = clip->clip->GetVideoInfo();
 
 	v8::Handle<v8::Array> ratio = v8::Array::New(2);
@@ -199,7 +179,7 @@ void JSClip::frameRatioGetter(v8::Local<v8::String> name, const v8::PropertyCall
 	info.GetReturnValue().Set(ratio);
 }
 
-#define JSCLIP_ADD_PROPERTY(NAME)	templ->SetAccessor(v8::String::New(#NAME), NAME ## Getter);
+#define JSCLIP_ADD_PROPERTY(NAME)	templ->SetAccessor(v8::String::New(#NAME), JSGet ## NAME);
 
 v8::Handle<v8::ObjectTemplate> JSClip::CreateObjectTemplate(v8::Handle<v8::Context> context) {
 	v8::HandleScope scope(context->GetIsolate());
@@ -218,7 +198,7 @@ v8::Handle<v8::ObjectTemplate> JSClip::CreateObjectTemplate(v8::Handle<v8::Conte
 	JSCLIP_ADD_PROPERTY(audioRate);
 	JSCLIP_ADD_PROPERTY(audioLength);
 	// audioLength and audioLengthF are literally the same thing here
-	templ->SetAccessor(v8::String::New("audioLengthF"), audioLengthGetter);
+	templ->SetAccessor(v8::String::New("audioLengthF"), JSGetaudioLength);
 	JSCLIP_ADD_PROPERTY(audioChannels);
 	JSCLIP_ADD_PROPERTY(audioBits);
 	JSCLIP_ADD_PROPERTY(isAudioFloat);

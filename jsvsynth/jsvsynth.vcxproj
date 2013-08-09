@@ -90,7 +90,9 @@
     <ClInclude Include="Clip.h" />
     <ClInclude Include="debug.h" />
     <ClInclude Include="Function.h" />
+    <ClInclude Include="jsutil.h" />
     <ClInclude Include="JSVEnvironment.h" />
+    <ClInclude Include="JSVideoFrame.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="util.h" />
@@ -107,7 +109,7 @@
     </ClCompile>
     <ClCompile Include="Function.cpp" />
     <ClCompile Include="JSVEnvironment.cpp" />
-    <ClCompile Include="jsvsynth.cpp" />
+    <ClCompile Include="JSVideoFrame.cpp" />
     <ClCompile Include="plugin.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

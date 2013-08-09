@@ -4,32 +4,32 @@ Import("tests.avsi")
 # run and don't crash AviSynth.
 
 JavaScript("""
-avisynth.Subtitle(avisynth.BlankClip({color:0xFF}), "Hello from JavaScript!")
+avs.Subtitle(avs.BlankClip({color:0xFF}), "Hello from JavaScript!")
 """)
 
 avsvalue = "Set in AviSynth"
 JavaScript("""
-avisynth.Subtitle(avisynth.BlankClip({color:0xFF}), avisynth.avsvalue)
+avs.Subtitle(avs.BlankClip({color:0xFF}), avs.avsvalue)
 """)
 
 avsvalue = 0
 JavaScript("""
-avisynth.avsvalue = "Hello " + "AviSynth!";
+avs.avsvalue = "Hello " + "AviSynth!";
 """)
 Subtitle(BlankClip(color=$FF), avsvalue)
 
 Subtitle(BlankClip(), String(JavaScript("12 + 30")))
 
 JavaScript("""
-  avisynth.fromjs = function(str) {
+  avs.fromjs = function(str) {
     return "Hello " + str.substring(0,1).toUpperCase() + str.substring(1);
   }
 """)
 Subtitle(BlankClip(), FromJS("world"))
 
 JavaScript("""
-  avisynth.animfun = function(clip, str, y) {
-    return avisynth.Subtitle(clip, str, {y:y});
+  avs.animfun = function(clip, str, y) {
+    return avs.Subtitle(clip, str, {y:y});
   }
 """)
 c = BlankClip()

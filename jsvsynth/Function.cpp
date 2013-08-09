@@ -66,26 +66,13 @@ v8::Handle<v8::ObjectTemplate> AVSFunction::CreateTemplate() {
 	return scope.Close(templ);
 }
 
-AVSFunction* AVSFunction::UnwrapSelf(v8::Handle<v8::Object> obj) {
-	v8::Handle<v8::External> ext = v8::Handle<v8::External>::Cast(obj->GetInternalField(0));
-	void* ptr = ext->Value();
-	return static_cast<AVSFunction*>(ptr);
-}
-
-void AVSFunction::DestroySelf(v8::Isolate* isolate, v8::Persistent<v8::Object>* self, AVSFunction* f) {
-	v8::HandleScope scope(isolate);
-	v8::Local<v8::Object>::New(isolate, (*self))->GetInternalField(0).Clear();
-	self->Dispose();
-	delete f;
-}
-
 void AVSFunction::GetAvisynthName(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info) {
-	info.GetReturnValue().Set(v8::String::New(UnwrapSelf(info.This())->avsName));
+	info.GetReturnValue().Set(v8::String::New(UnwrapSelf<AVSFunction>(info.This())->avsName));
 }
 
 void AVSFunction::InvokeFunction(const v8::FunctionCallbackInfo<v8::Value>& args) {
 	v8::HandleScope scope(args.GetIsolate());
-	AVSFunction* wrapped = UnwrapSelf(args.This());
+	AVSFunction* wrapped = UnwrapSelf<AVSFunction>(args.This());
 	int argCount = args.Length();
 	AVSValue* avsArgs = NULL;
 	int namedArgCount = 0;

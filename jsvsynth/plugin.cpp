@@ -43,6 +43,17 @@ AVSValue __cdecl JS_Script(AVSValue args, void* user_data, IScriptEnvironment* e
 
 AVSValue __cdecl JS_Import(AVSValue args, void* user_data, IScriptEnvironment* env) {
 	TRACE("Import JavaScript %s\n", args[0].AsString());
+	// FIXME: There's also an "encoding" argument that isn't used at present
+	jsv::JSVEnvironment* jsvEnv = (jsv::JSVEnvironment*) user_data;
+	jsvEnv->EnterIsolate();
+	AVSValue result = jsvEnv->ImportScript(args[0].AsString());
+	jsvEnv->ExitIsolate();
+	return result;
+}
+
+AVSValue __cdecl JS_JavaScriptFilter(AVSValue args, void* user_data, IScriptEnvironment* env) {
+	TRACE("Create JavaScriptFilter %s\n", args[0].AsString());
+	// FIXME: There's also an "encoding" argument that isn't used at present
 	jsv::JSVEnvironment* jsvEnv = (jsv::JSVEnvironment*) user_data;
 	jsvEnv->EnterIsolate();
 	AVSValue result = jsvEnv->ImportScript(args[0].AsString());
@@ -60,10 +71,12 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit2(IScri
 	// Function that runs a bit of JavaScript that's given as a string argument.
 	env->AddFunction("JavaScript", "s", JS_Script, jsvenv);
 	// Function that loads an external bit of JavaScript and executes it as above.
-	env->AddFunction("ImportJS", "s", JS_Import, jsvenv);
+	env->AddFunction("ImportJS", "s[ENCODING]s", JS_Import, jsvenv);
+	env->AddFunction("JavaScriptFilter", "cs", JS_JavaScriptFilter, jsvenv);
 	// Canvas API functions
-	// env->AddFunction("Canvas", "s", JS_Canvas, NULL);
-	// env->AddFunction("LoadCanvas", "s", JS_LoadCanvas, NULL);
+	// These aren't anywhere near implementation yet
+	// env->AddFunction("Canvas", "s", JS_Canvas, jsvenv);
+	// env->AddFunction("ImportCanvas", "s[ENCODING]s", JS_LoadCanvas, jsvenv);
 	// The AddFunction has the following paramters:
 	// AddFunction(Filtername , Arguments, Function to call,0);
 
