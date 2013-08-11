@@ -134,9 +134,11 @@ In order to build this plugin, you'll require V8, which is not included. (At one
 point I was hoping to include just the V8 binaries, but they're large enough and
 V8 is a fast enough moving target that it just isn't feasible.)
 
-In any case, use SVN to download the V8 trunk into "v8":
+A `third_party.bat` file is provided to help automate the process of downloading
+the third party software. You can also manually grab V8 into the "v8" directory
+by running the following command:
 
-    svn http://v8.googlecode.com/svn/trunk v8
+    svn checkout http://v8.googlecode.com/svn/trunk v8
 
 Note that while using git is "recommended," the git instructions are for
 accessing the "bleeding edge" branch, while all we want is the "stable" branch,
@@ -151,7 +153,7 @@ Note that if you're using a more recent version of Visual Studio (or is it just
 the express versions?) you'll need to use `MSBuild` instead of `devenv` to build
 the project from the command line. The command is similar:
 
-    MSBuild build/all.sln /p:Configuration=Release 
+    MSBuild build\all.sln /p:Configuration=Release 
 
 If you're planning on building the debug version of the plugin, you'll want to
 use `/p:Configuration=Debug` instead.
