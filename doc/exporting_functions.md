@@ -58,7 +58,7 @@ make an ambiguous signature or combine `+` or `*` with an optional argument.
 
 In other words, I have no idea what `s+s*` would do (as there'd be no way to
 tell when one set of strings ends and another begins - yes, this is important,
-see the section below on "expanding arrays".
+see the section below on "expanding arrays.")
 
 --------------------------------------------------------------------------------
 
@@ -79,7 +79,7 @@ function join(separator) {
     }
     return res;
 }
-strcat.avsSignature = "ss+";
+join.avsSignature = "ss+";
 avs.join = join;
 ```
 
@@ -95,7 +95,7 @@ arguments in the first place, and a second time for any `*` or `+` arguments.)
 This means that the following:
 
 ```avisynth
-strcat(" ", "Peter", "picked", "a", "peck", "of", "pickled", "peppers")
+join(" ", "Peter", "picked", "a", "peck", "of", "pickled", "peppers")
 ```
 
 Will initially map to the following call:
