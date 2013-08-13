@@ -23,20 +23,32 @@
 namespace jsv {
 
 /**
- * Class that handles wrapping an AviSynth Clip with a JavaScript object that
- * V8 can use.
+ * This class provides access to the information in a VideoInfo struct to
+ * JavaScript. Essentially this class provides the common implementation
+ * between JSClip, which wraps an AviSynth-provided clip, and
+ * JSFilter, which provides a way to create a filter via JavaScript.
+ */
+class JSVideoInfo {
+};
+
+/**
+ * This class provides JavaScript access to a clip that AviSynth can use.
  */
 class JSClip {
 public:
 	JSClip(PClip, v8::Handle<v8::ObjectTemplate>);
 	~JSClip();
-	v8::Handle<v8::Object> GetObject(v8::Isolate* isolate);
+	v8::Handle<v8::Object> GetInstance(v8::Isolate* isolate);
+	PClip GetClip() { return clip; }
 	static v8::Handle<v8::ObjectTemplate> CreateObjectTemplate(v8::Handle<v8::Context> context);
 	static bool IsWrappedClip(v8::Handle<v8::Object>);
 	static PClip UnwrapClip(v8::Handle<v8::Object>);
+protected:
+	JSClip(PClip, v8::Handle<v8::Object>);
 private:
 	static void ClipConstructor(const v8::FunctionCallbackInfo<v8::Value>&);
 	static void ToString(const v8::FunctionCallbackInfo<v8::Value>&);
+	static void GetFrame(const v8::FunctionCallbackInfo<v8::Value>&);
 	v8::Persistent<v8::Object> jsSelf;
 
 	JS_PROPERTY_GETTER(width);

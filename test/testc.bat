@@ -33,6 +33,6 @@ EXIT /B 1
 
 :HaveVdub
 
-"%VDUB_HOME%\vdub.exe" test.avs
+"%VDUB_HOME%\vdub.exe" %1
 
 ECHO Error level %ErrorLevel%

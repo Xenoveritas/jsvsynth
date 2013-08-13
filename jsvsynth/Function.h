@@ -40,6 +40,12 @@ private:
 	JSVEnvironment* jsvEnv;
 };
 
+typedef enum ArrayExpandMode {
+	ARRAY_EXPAND_ALWAYS,
+	ARRAY_EXPAND_NEVER,
+	ARRAY_EXPAND_LAST
+} ArrayExpandMode;
+
 /**
  * Wrap the other way, exposing a JavaScript function to AviSynth.
  */
@@ -50,9 +56,13 @@ public:
 	v8::Handle<v8::Value> Invoke(int argc, v8::Handle<v8::Value> args[]);
 	AVSValue Invoke(AVSValue args);
 	JSVEnvironment* GetEnvironment() { return env; }
+	const char* GetSignature() { return signature == NULL ? ".*" : signature; }
+	ArrayExpandMode GetArrayExpandMode() { return arrayMode; }
 private:
 	v8::Persistent<v8::Function> func;
 	JSVEnvironment* env;
+	char* signature;
+	ArrayExpandMode arrayMode;
 };
 
 }; // namespace jsv

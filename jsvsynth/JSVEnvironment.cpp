@@ -20,8 +20,9 @@
 #include <string.h>
 
 #include "JSVEnvironment.h"
-#include "Clip.h"
+#include "JSClip.h"
 #include "Function.h"
+#include "JSVideoFrame.h"
 #include "util.h"
 
 AVSValue __cdecl InvokeJSFunction(AVSValue args, void* user_data, IScriptEnvironment* env);
@@ -31,6 +32,8 @@ namespace jsv
 
 JSVEnvironment::JSVEnvironment(IScriptEnvironment* env) : avisynthEnv(env) {
 	isolate = v8::Isolate::GetCurrent();
+	// Our embedder-specific information is this class
+	isolate->SetData(this);
 	v8::HandleScope scope(isolate);
 	v8::Handle<v8::Context> context = CreateContext(isolate);
 	// We'll be needing this context for the remainder of the program.
@@ -38,10 +41,13 @@ JSVEnvironment::JSVEnvironment(IScriptEnvironment* env) : avisynthEnv(env) {
 	// But now that we have the context, init some global things...
 	v8::Context::Scope context_scope(context);
 	CreateGlobals(context->Global());
-	// And create our clip template for later.
+	// And create our templates.
 	clipTemplate.Reset(isolate, JSClip::CreateObjectTemplate(context));
 	avsFuncWrapperTemplate.Reset(isolate, AVSFunction::CreateTemplate());
+	interleavedVideoFrameTemplate.Reset(isolate, JSInterleavedVideoFrame::CreateTemplate(isolate));
+	planarVideoFrameTemplate.Reset(isolate, JSPlanarVideoFrame::CreateTemplate(isolate));
 }
+
 JSVEnvironment::~JSVEnvironment() {
 	TRACE("Removing stuff...\n");
 	for (std::list<void*>::iterator i = stuffToDelete.begin(); i != stuffToDelete.end(); i++) {
@@ -100,10 +106,13 @@ void JSVEnvironment::CreateGlobals(v8::Handle<v8::Object> global) {
 	avisynthTemplate->Set(v8::String::New("PLANAR_Y"), v8::Int32::New(PLANAR_Y), v8::ReadOnly);
 	avisynthTemplate->Set(v8::String::New("PLANAR_U"), v8::Int32::New(PLANAR_U), v8::ReadOnly);
 	avisynthTemplate->Set(v8::String::New("PLANAR_V"), v8::Int32::New(PLANAR_V), v8::ReadOnly);
+	/*
+	Not exported: Not needed for now (access is always unaligned, not sure it makes a difference)
 	avisynthTemplate->Set(v8::String::New("PLANAR_ALIGNED"), v8::Int32::New(PLANAR_ALIGNED), v8::ReadOnly);
 	avisynthTemplate->Set(v8::String::New("PLANAR_Y_ALIGNED"), v8::Int32::New(PLANAR_Y_ALIGNED), v8::ReadOnly);
 	avisynthTemplate->Set(v8::String::New("PLANAR_U_ALIGNED"), v8::Int32::New(PLANAR_U_ALIGNED), v8::ReadOnly);
 	avisynthTemplate->Set(v8::String::New("PLANAR_V_ALIGNED"), v8::Int32::New(PLANAR_V_ALIGNED), v8::ReadOnly);
+	*/
 	// And set the two collections
 	v8::Handle<v8::ObjectTemplate> functionsTemplate = v8::ObjectTemplate::New();
 	functionsTemplate->SetNamedPropertyHandler(JSGetAviSynthFunctions, JSSetAviSynthFunctions);
@@ -138,9 +147,8 @@ void JSVEnvironment::WrapJSFunction(v8::Handle<v8::String> name, v8::Handle<v8::
 	TRACE("Wrapping function %s from JavaScript\n", *utf8name);
 	JSFunction* res = new JSFunction(this, function);
 	stuffToDelete.push_back(res);
-	// . = any type, * = one or more, so ".*" is the signature for all types, which
-	// is what we want for this wrapper
-	avisynthEnv->AddFunction(*utf8name, ".*", InvokeJSFunction, res);
+	TRACE("Wrapper has signature \"%s\"\n", res->GetSignature());
+	avisynthEnv->AddFunction(*utf8name, res->GetSignature(), InvokeJSFunction, res);
 }
 
 v8::Handle<v8::Object> JSVEnvironment::WrapAVSFunction(v8::Handle<v8::String> name) {
@@ -151,13 +159,31 @@ v8::Handle<v8::Object> JSVEnvironment::WrapAVSFunction(v8::Handle<v8::String> na
 	}
 	return scope.Close(WrapAVSFunction(*utf8Name));
 }
-
 v8::Handle<v8::Object> JSVEnvironment::WrapAVSFunction(const char* name) {
 	v8::HandleScope scope(isolate);
 	AVSFunction* wrapped = new AVSFunction(this, name);
 	v8::Handle<v8::ObjectTemplate> templ = v8::Local<v8::ObjectTemplate>::New(isolate, avsFuncWrapperTemplate);
 	v8::Handle<v8::Object> result = wrapped->NewInstance(templ);
 	return scope.Close(result);
+}
+
+v8::Handle<v8::Object> JSVEnvironment::WrapClip(PClip clip) {
+	TRACE("Wrap clip\n");
+	v8::HandleScope scope(isolate);
+	JSClip* jsclip = new JSClip(clip, v8::Local<v8::ObjectTemplate>::New(isolate, clipTemplate));
+	TRACE("Converted.\n");
+	return scope.Close(jsclip->GetInstance(isolate));
+}
+
+v8::Handle<v8::Object> JSVEnvironment::WrapVideoFrame(PVideoFrame frame, const VideoInfo& vi) {
+	// Sadly we need the video info to know which type of video access to provide.
+	JSVideoFrame* wrappedFrame;
+	if (vi.IsPlanar()) {
+		wrappedFrame = new JSPlanarVideoFrame(frame, isolate, v8::Local<v8::ObjectTemplate>::New(isolate, planarVideoFrameTemplate));
+	} else {
+		wrappedFrame = new JSInterleavedVideoFrame(frame, isolate, v8::Local<v8::ObjectTemplate>::New(isolate, interleavedVideoFrameTemplate));
+	}
+	return wrappedFrame->GetInstance(isolate);
 }
 
 void JSVEnvironment::JSGetAviSynthAll(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info) {
@@ -287,27 +313,33 @@ void ThrowErrorInAviSynth(IScriptEnvironment* env, v8::Isolate* isolate, v8::Try
 #endif
 
 v8::Handle<v8::Value> JSVEnvironment::ConvertToJS(AVSValue value) {
+	// FIXME: TRACE_CONVERSIONS should also dump stuff here
 	if (!value.Defined()) {
 		return v8::Null();
 	} else if (value.IsString()) {
 		return v8::String::New(value.AsString());
 	} else if (value.IsClip()) {
-		TRACE("Wrap clip from AviSynth\n");
-		// Here's the fun one - wrap it up
-		v8::HandleScope scope(isolate);
-		JSClip* clip = new JSClip(value.AsClip(), v8::Local<v8::ObjectTemplate>::New(isolate, clipTemplate));
-		TRACE("Converted.\n");
-		return scope.Close(clip->GetObject(isolate));
+		return WrapClip(value.AsClip());
 	} else if (value.IsInt()) {
-		// Int must be tested prior to float IsFloat() also returns true for ints
+		// Int must be tested prior to float as IsFloat() also returns true for ints
 		return v8::Int32::New(value.AsInt());
 	} else if (value.IsFloat()) {
 		return v8::Number::New(value.AsFloat());
 	} else if (value.IsBool()) {
 		return v8::Boolean::New(value.AsBool());
 	} else if (value.IsArray()) {
-		TRACE("Error: attempting to convert array (not supported as it makes no sense)\n");
-		return v8::String::New("<array>");
+		// This is mostly used by JSFunction to convert incoming arrays when
+		// the array expand mode is "never" or when they aren't the last value
+		// in the arguments list. In fact, it should really never happen
+		// outside converting argument lists, as that's the only time
+		// AviSynth will generate arrays.
+		v8::HandleScope scope(isolate);
+		int count = value.ArraySize();
+		v8::Handle<v8::Array> result = v8::Array::New(count);
+		for (int i = 0; i < count; i++) {
+			result->Set(i, ConvertToJS(value[i]));
+		}
+		return scope.Close(result);
 	} else {
 		TRACE("Unknown type of AVS value %s\n", value.AsString("bad"));
 		return v8::String::New("<conversion failure>");
@@ -439,13 +471,8 @@ AVSValue __cdecl InvokeJSFunction(AVSValue args, void* user_data, IScriptEnviron
 	// Grab the jsfunc...
 	jsv::JSFunction* jsfunc = (jsv::JSFunction*) user_data;
 	jsfunc->GetEnvironment()->EnterIsolate();
-	// Our signature is ".*", our first argument will likely be an array, which is the
-	// actual values we want. Which is documented nowhere, really, but there you go.
-	if (args.IsArray() && args.ArraySize() > 0 && args[0].IsArray()) {
-		args = args[0];
-	}
 	// User data (should) be a JSFunction, allowing us to just do this:
-	AVSValue result = ((jsv::JSFunction*)user_data)->Invoke(args);
+	AVSValue result = static_cast<jsv::JSFunction*>(user_data)->Invoke(args);
 	TRACE("Returning back to AviSynth\n");
 	jsfunc->GetEnvironment()->ExitIsolate();
 	return result;

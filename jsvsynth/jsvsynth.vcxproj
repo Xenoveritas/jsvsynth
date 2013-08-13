@@ -87,9 +87,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="avisynth.h" />
-    <ClInclude Include="Clip.h" />
+    <ClInclude Include="JSClip.h" />
     <ClInclude Include="debug.h" />
     <ClInclude Include="Function.h" />
+    <ClInclude Include="JSFilter.h" />
     <ClInclude Include="jsutil.h" />
     <ClInclude Include="JSVEnvironment.h" />
     <ClInclude Include="JSVideoFrame.h" />
@@ -98,7 +99,7 @@
     <ClInclude Include="util.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Clip.cpp" />
+    <ClCompile Include="JSClip.cpp" />
     <ClCompile Include="dllmain.cpp">
       <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</CompileAsManaged>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -108,6 +109,7 @@
       </PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Function.cpp" />
+    <ClCompile Include="JSFilter.cpp" />
     <ClCompile Include="JSVEnvironment.cpp" />
     <ClCompile Include="JSVideoFrame.cpp" />
     <ClCompile Include="plugin.cpp" />

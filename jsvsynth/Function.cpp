@@ -18,7 +18,7 @@
 
 #include "Function.h"
 #include "JSVEnvironment.h"
-#include "Clip.h"
+#include "JSClip.h"
 
 namespace jsv {
 
@@ -147,10 +147,52 @@ void AVSFunction::InvokeFunction(const v8::FunctionCallbackInfo<v8::Value>& args
 }
 
 JSFunction::JSFunction(JSVEnvironment* aEnv, v8::Handle<v8::Function> aFunc) :
-	env(aEnv), func(aEnv->GetIsolate(), aFunc) {
+	env(aEnv), func(aEnv->GetIsolate(), aFunc), signature(NULL), arrayMode(ARRAY_EXPAND_LAST) {
+	v8::HandleScope scope(aEnv->GetIsolate());
+	// See if there's a signature in the function we were given
+	v8::Handle<v8::String> key = v8::String::New("avsSignature");
+	if (aFunc->HasOwnProperty(key)) {
+		v8::Handle<v8::Value> js_sig = aFunc->Get(key);
+		if (!js_sig.IsEmpty()) {
+			// Grab its string value
+			v8::String::AsciiValue c_sig(js_sig->ToString());
+			if (*c_sig) {
+				TRACE("Signature from JS: %s\n", *c_sig);
+				// FIXME: Check that the signature is even remotely valid.
+				// Copy the string value
+				signature = _strdup(*c_sig);
+			}
+		}
+	}
+	key = v8::String::New("avsExpandArrays");
+	// And see if we have a expand array mode.
+	if (aFunc->HasOwnProperty(key)) {
+		v8::Handle<v8::Value> js_expand = aFunc->Get(key);
+		if (!js_expand.IsEmpty()) {
+			// And attempt to parse this.
+			v8::String::AsciiValue c_expand(js_expand->ToString());
+			if (*c_expand) {
+				TRACE("Array expand from JS: %s\n", *c_expand);
+				if (strcmp(*c_expand, "always") == 0) {
+					arrayMode = ARRAY_EXPAND_ALWAYS;
+				} else if (strcmp(*c_expand, "never") == 0) {
+					arrayMode = ARRAY_EXPAND_NEVER;
+				}
+				// And just ignore all other values
+			}
+		}
+	}
+	// FIXME: At this point, we should check our final signature and expand
+	// mode and pick whichever makes the most sense - if there can never be
+	// arrays to expand (no * or + in the signature) always change to NEVER
+	// mode.
 }
+
 JSFunction::~JSFunction() {
 	func.Dispose();
+	if (signature != NULL) {
+		free(signature);
+	}
 }
 
 v8::Handle<v8::Value> JSFunction::Invoke(int argc, v8::Handle<v8::Value> argv[]) {
@@ -163,17 +205,72 @@ v8::Handle<v8::Value> JSFunction::Invoke(int argc, v8::Handle<v8::Value> argv[])
 AVSValue JSFunction::Invoke(AVSValue args) {
 	v8::HandleScope scope(env->GetIsolate());
 	v8::Context::Scope context_scope(env->GetContext());
-	// Step 1: Convert values to JavaScript values
-	v8::Handle<v8::Value>* jsargs;
+	// How we convert the input values depends on the array expand mode
+	v8::Handle<v8::Value>* js_argv;
 	int argc = args.ArraySize();
-	jsargs = (v8::Handle<v8::Value>*) malloc(argc * sizeof(v8::Handle<v8::Value>));
-	for (int i = 0; i < argc; i++) {
-		jsargs[i] = env->ConvertToJS(args[i]);
+	int js_argc = argc;
+	// What we do with this depends on the expand mode.
+	switch (arrayMode) {
+	case ARRAY_EXPAND_ALWAYS:
+		// Count up all arrays and add them to the value list.
+		for (int i = 0; i < argc; i++) {
+			if (args[i].IsArray()) {
+				// Increase the argc size by the number of elements in this
+				// list - minus 1, for the original array, which we're
+				// replacing with all its elements
+				js_argc += args[i].ArraySize() - 1;
+			}
+		}
+		break;
+	case ARRAY_EXPAND_LAST:
+		if (argc > 0 && args[argc-1].IsArray()) {
+			js_argc += args[argc-1].ArraySize() - 1;
+		}
+		break;
+	default:
+		// Do nothing
+		break;
+	}
+	// Allocate space.
+	js_argv = (v8::Handle<v8::Value>*) malloc(js_argc * sizeof(v8::Handle<v8::Value>));
+	// And again, how we convert changes based on mode.
+	if (arrayMode == ARRAY_EXPAND_ALWAYS) {
+		// Expand all arrays given.
+		for (int i = 0, j = 0; i < argc; i++) {
+			if (args[i].IsArray()) {
+				AVSValue arr = args[i];
+				int length = arr.ArraySize();
+				for (int k = 0; k < length; k++, j++) {
+					js_argv[j] = env->ConvertToJS(arr[k]);
+				}
+			} else {
+				js_argv[j] = env->ConvertToJS(args[i]);
+				j++;
+			}
+		}
+	} else {
+		// Almost identical
+		int length = argc;
+		if (arrayMode == ARRAY_EXPAND_LAST) {
+			length--;
+		}
+		int i;
+		for (i = 0; i < length; i++) {
+			js_argv[i] = env->ConvertToJS(args[i]);
+		}
+		if (arrayMode == ARRAY_EXPAND_LAST) {
+			// Convert the final array
+			AVSValue arr = args[i];
+			int length = arr.ArraySize();
+			for (int j = 0; j < length; j++, i++) {
+				js_argv[i] = env->ConvertToJS(arr[j]);
+			}
+		}
 	}
 	v8::TryCatch try_catch;
-	v8::Handle<v8::Value> result = Invoke(argc, jsargs);
+	v8::Handle<v8::Value> result = Invoke(js_argc, js_argv);
 	// Free now, we're done with them
-	free(jsargs);
+	free(js_argv);
 	if (result.IsEmpty()) {
 		TRACE("Error from JavaScript\n");
 		ThrowErrorInAviSynth(env->GetAVSScriptEnvironment(), env->GetIsolate(), &try_catch);

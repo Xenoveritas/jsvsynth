@@ -51,6 +51,20 @@ public:
 	void WrapJSFunction(v8::Handle<v8::String> name, v8::Handle<v8::Function> function);
 	v8::Handle<v8::Object> WrapAVSFunction(v8::Handle<v8::String> name);
 	v8::Handle<v8::Object> WrapAVSFunction(const char* name);
+	/**
+	 * Wrap a clip for access from JavaScript.
+	 */
+	v8::Handle<v8::Object> WrapClip(PClip);
+	/**
+	 * Wrap a video frame for access from JavaScript.
+	 */
+	v8::Handle<v8::Object> WrapVideoFrame(PVideoFrame, const VideoInfo& vi);
+	/**
+	 * Gets the current JSVEnvironment if there is one.
+	 * Note that is returns whatever's in the "data" slot of the current
+	 * v8::Isolate.
+	 */
+	static JSVEnvironment* GetCurrent() { return static_cast<JSVEnvironment*>(v8::Isolate::GetCurrent()->GetData()); }
 private:
 	JSFunction* WrapFunction(v8::Handle<v8::Function> func);
 	v8::Handle<v8::Context> CreateContext(v8::Isolate* isolate);
@@ -63,6 +77,8 @@ private:
 	v8::Persistent<v8::Context> scriptingContext;
 	v8::Persistent<v8::ObjectTemplate> clipTemplate;
 	v8::Persistent<v8::ObjectTemplate> avsFuncWrapperTemplate;
+	v8::Persistent<v8::ObjectTemplate> interleavedVideoFrameTemplate;
+	v8::Persistent<v8::ObjectTemplate> planarVideoFrameTemplate;
 	/**
 	 * A list of allocated memory that we can't delete until AviSynth closes.
 	 * At present this is exclusively wrapped JavaScript functions.

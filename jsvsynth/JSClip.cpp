@@ -15,7 +15,8 @@
  * along with JSVSynth.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "stdafx.h"
-#include "Clip.h"
+#include "JSVEnvironment.h"
+#include "JSClip.h"
 
 #define JSCLIP_HIDDEN_PROP		"v8::Clip"
 
@@ -36,7 +37,7 @@ JSClip::JSClip(PClip aClip, v8::Handle<v8::ObjectTemplate> objTemplate) : clip(a
 JSClip::~JSClip() {
 }
 
-v8::Handle<v8::Object> JSClip::GetObject(v8::Isolate* isolate) {
+v8::Handle<v8::Object> JSClip::GetInstance(v8::Isolate* isolate) {
 	return v8::Local<v8::Object>::New(isolate, jsSelf);
 }
 
@@ -220,7 +221,21 @@ v8::Handle<v8::ObjectTemplate> JSClip::CreateObjectTemplate(v8::Handle<v8::Conte
 	JSCLIP_ADD_PROPERTY(frameRatio);
 	v8::Handle<v8::FunctionTemplate> toString = v8::FunctionTemplate::New(ToString);
 	templ->Set("toString", toString);
+	templ->Set("getFrame", v8::FunctionTemplate::New(GetFrame));
 	return scope.Close(templ);
+}
+
+void JSClip::GetFrame(const v8::FunctionCallbackInfo<v8::Value>& info) {
+	JSClip* self = UnwrapSelf<JSClip>(info.This());
+	v8::Isolate* isolate = v8::Isolate::GetCurrent();
+	v8::HandleScope scope(isolate);
+	if (info.Length() < 1) {
+		v8::ThrowException(v8::Exception::Error(v8::String::New("Missing frame number")));
+	}
+	// Grab the first argument as an int
+	int n = info[0]->ToInt32()->Int32Value();
+	JSVEnvironment* jsenv = static_cast<JSVEnvironment*>(isolate->GetData());
+	v8::Handle<v8::Object> frame = jsenv->WrapVideoFrame(self->clip->GetFrame(n, jsenv->GetAVSScriptEnvironment()), self->clip->GetVideoInfo());
 }
 
 }; // namespace jsv
