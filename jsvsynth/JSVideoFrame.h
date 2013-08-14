@@ -24,29 +24,36 @@ namespace jsv {
 
 class JSVideoFrame {
 public:
-	JSVideoFrame(PVideoFrame frame, v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> templ);
+	JSVideoFrame(PVideoFrame frame, const VideoInfo& vi, v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> templ);
 	virtual ~JSVideoFrame();
 	v8::Handle<v8::Object> GetInstance(v8::Isolate* isolate);
 	virtual void Release();
+	PVideoFrame GetVideoFrame() { return frame; }
+	static bool IsWrappedVideoFrame(v8::Handle<v8::Object> obj);
+	static PVideoFrame UnwrapVideoFrame(v8::Handle<v8::Object> obj);
 protected:
 	v8::Handle<v8::ArrayBuffer> WrapData(v8::Isolate* isolate, BYTE* data, int length);
 	v8::Persistent<v8::Object> instance;
 	PVideoFrame frame;
-	bool madeWeak;
+	const VideoInfo& vi;
 	bool released;
+private:
+	bool madeWeak;
 };
 
 /**
- * JavaScript wrapper for a single VideoFrame.
+ * JavaScript wrapper for a single VideoFrame where the data is stored in an
+ * interleaved format.
  */
 class JSInterleavedVideoFrame : public JSVideoFrame {
 public:
-	JSInterleavedVideoFrame(PVideoFrame frame, v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> templ);
+	JSInterleavedVideoFrame(PVideoFrame frame, const VideoInfo& vi, v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> templ);
 	~JSInterleavedVideoFrame();
 	virtual void Release();
 	static v8::Handle<v8::ObjectTemplate> CreateTemplate(v8::Isolate* isolate);
 	v8::Handle<v8::Uint8Array> GetData(v8::Isolate* isolate);
 private:
+	void PopulateInstance(v8::Handle<v8::Object> inst);
 	static void JSRelease(const v8::FunctionCallbackInfo<v8::Value>&);
 	static void GetPitch(const v8::FunctionCallbackInfo<v8::Value>&);
 	static void GetRowSize(const v8::FunctionCallbackInfo<v8::Value>&);
@@ -56,8 +63,10 @@ private:
 	v8::Persistent<v8::Uint8Array> dataInstance;
 };
 
+#if 0
+Screw this for now.
 /**
- * JavaScript wrapper for a single VideoFrame.
+ * JavaScript wrapper for a single VideoFrame with the planes stored separately.
  */
 class JSPlanarVideoFrame : public JSVideoFrame {
 public:
@@ -82,10 +91,6 @@ private:
 	v8::Persistent<v8::Uint8Array> dataVInstance;
 };
 
-/**
- * Provides access to the actual data behind a video frame.
- */
-class JSVideoFrameData {
-};
+#endif
 
 };

@@ -17,7 +17,7 @@ This is still done in a similar fashion:
 
 ```javascript
 var myFunction = function(clip, str, color, x, y) {
-    // Some code that checks if values were set and sets defaults, see below
+    // TODO: Code that checks if values were set and sets defaults
     return avs.Subtitle(clip, str, {color:color, x:x, y:y});
 }
 
@@ -43,6 +43,16 @@ the above example signature, `"c[STRING]s[COLOR]i[X]i[Y]i"`, the second argument
 is an optional argument named `"STRING"` that is a string. The third argument is
 an optional argument named `"COLOR"` that is an integer, and so on.
 
+If an argument is optional but has no value, then the value given to JavaScript
+will be `null`. (TODO: Should this really be `undefined`?) So to set a default
+value, you should (currently) use:
+
+```javascript
+if (value == null) {
+    value = defaultValue;
+}
+```
+
 The final aspect of the signature is the number of times values can appear.
 In the above examples, all of them take a single value. However, let's take a
 quick look at the default signature, used if you don't specify anything: `".*"`
@@ -58,7 +68,7 @@ make an ambiguous signature or combine `+` or `*` with an optional argument.
 
 In other words, I have no idea what `s+s*` would do (as there'd be no way to
 tell when one set of strings ends and another begins - yes, this is important,
-see the section below on "expanding arrays.")
+see the section below on "expanding arrays") or what `i[FOO]s+` would do.
 
 --------------------------------------------------------------------------------
 

@@ -17,14 +17,19 @@
 #include "stdafx.h"
 #include "JSVideoFrame.h"
 
+#define JSVIDEOFRAME_HIDDEN_PROP	"jsv::VideoFrame"
+
 namespace jsv {
 
-JSVideoFrame::JSVideoFrame(PVideoFrame aFrame, v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> templ)
-	: frame(aFrame), madeWeak(false), released(false) {
+JSVideoFrame::JSVideoFrame(PVideoFrame aFrame, const VideoInfo& aVI, v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> templ)
+	: frame(aFrame), vi(aVI), madeWeak(false), released(false) {
+	TRACE("JSVideoFrame::JSVideoFrame\n");
 	v8::HandleScope scope(isolate);
 	// Create a new instance
+	TRACE("Creating new instance...\n");
 	v8::Handle<v8::Object> inst = v8::Local<v8::ObjectTemplate>::New(isolate, templ)->NewInstance();
 	inst->SetInternalField(0, v8::External::New(this));
+	inst->SetHiddenValue(v8::String::New(JSVIDEOFRAME_HIDDEN_PROP), v8::True());
 	instance.Reset(isolate, inst);
 	madeWeak = false;
 }
@@ -32,6 +37,8 @@ JSVideoFrame::JSVideoFrame(PVideoFrame aFrame, v8::Isolate* isolate, v8::Handle<
 JSVideoFrame::~JSVideoFrame() {
 	instance.Dispose();
 }
+	static bool IsWrappedVideoFrame(v8::Handle<v8::Object> obj);
+	static JSVideoFrame* UnwrapVideoFrame(v8::Handle<v8::Object> obj);
 
 v8::Handle<v8::Object> JSVideoFrame::GetInstance(v8::Isolate* isolate) {
 	v8::HandleScope scope(isolate);
@@ -43,7 +50,24 @@ v8::Handle<v8::Object> JSVideoFrame::GetInstance(v8::Isolate* isolate) {
 		instance.MakeWeak(isolate, this, DestroySelf<JSVideoFrame>);
 		madeWeak = true;
 	}
-	return inst;
+	return scope.Close(inst);
+}
+
+bool JSVideoFrame::IsWrappedVideoFrame(v8::Handle<v8::Object> obj) {
+	v8::HandleScope scope(v8::Isolate::GetCurrent());
+	v8::Handle<v8::Value> value = obj->GetHiddenValue(v8::String::New(JSVIDEOFRAME_HIDDEN_PROP));
+	return (!value.IsEmpty()) && value->IsBoolean() && value->IsTrue();
+}
+
+PVideoFrame JSVideoFrame::UnwrapVideoFrame(v8::Handle<v8::Object> obj) {
+	v8::HandleScope scope(v8::Isolate::GetCurrent());
+	v8::Handle<v8::Value> value = obj->GetHiddenValue(v8::String::New(JSVIDEOFRAME_HIDDEN_PROP));
+	if ((!value.IsEmpty()) && value->IsBoolean() && value->IsTrue()) {
+		JSVideoFrame* frame = UnwrapSelf<JSVideoFrame>(obj);
+		return frame->GetVideoFrame();
+	} else {
+		return NULL;
+	}	
 }
 
 void JSVideoFrame::Release() {
@@ -60,12 +84,13 @@ v8::Handle<v8::ArrayBuffer> JSVideoFrame::WrapData(v8::Isolate* isolate, BYTE* d
 	// This makes sure anyone hanging onto a data buffer (don't do that!) but not the
 	// frame won't have the buffer deallocated/reused out from under them.
 	// It also makes for a great potential memory leak!
-	result->Set(v8::String::New("frame"), GetInstance(isolate));
+	result->Set(v8::String::New("frame"), GetInstance(isolate), v8::PropertyAttribute::ReadOnly);
 	return scope.Close(result);
 }
 
-JSInterleavedVideoFrame::JSInterleavedVideoFrame(PVideoFrame aFrame, v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> templ)
-	: JSVideoFrame(aFrame, isolate, templ) {
+JSInterleavedVideoFrame::JSInterleavedVideoFrame(PVideoFrame aFrame, const VideoInfo& aVI, v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> templ)
+	: JSVideoFrame(aFrame, aVI, isolate, templ) {
+	PopulateInstance(v8::Local<v8::Object>::New(isolate, instance));
 }
 
 JSInterleavedVideoFrame::~JSInterleavedVideoFrame() {
@@ -80,6 +105,14 @@ void JSInterleavedVideoFrame::Release() {
 	if (!dataInstance.IsEmpty()) {
 		v8::Local<v8::ArrayBuffer>::New(isolate, dataBufferInstance)->Neuter();
 	}
+}
+
+void JSInterleavedVideoFrame::PopulateInstance(v8::Handle<v8::Object> inst) {
+	inst->Set(v8::String::New("pitch"), v8::Int32::New(frame->GetPitch()), v8::PropertyAttribute::ReadOnly);
+	inst->Set(v8::String::New("rowSize"), v8::Int32::New(frame->GetRowSize()), v8::PropertyAttribute::ReadOnly);
+	inst->Set(v8::String::New("height"), v8::Int32::New(frame->GetHeight()), v8::PropertyAttribute::ReadOnly);
+	inst->Set(v8::String::New("bitsPerPixel"), v8::Int32::New(vi.BitsPerPixel()), v8::PropertyAttribute::ReadOnly);
+	inst->Set(v8::String::New("bytesPerPixel"), v8::Int32::New(vi.BytesFromPixels(1)), v8::PropertyAttribute::ReadOnly);
 }
 
 void JSInterleavedVideoFrame::JSRelease(const v8::FunctionCallbackInfo<v8::Value>& info) {
@@ -153,15 +186,15 @@ v8::Handle<v8::Uint8Array> JSInterleavedVideoFrame::GetData(v8::Isolate* isolate
 v8::Handle<v8::ObjectTemplate> JSInterleavedVideoFrame::CreateTemplate(v8::Isolate* isolate) {
 	v8::HandleScope scope(isolate);
 	v8::Handle<v8::ObjectTemplate> templ = v8::ObjectTemplate::New();
-	templ->Set(v8::String::New("getPitch"), v8::FunctionTemplate::New(GetPitch));
-	templ->Set(v8::String::New("getRowSize"), v8::FunctionTemplate::New(GetRowSize));
-	templ->Set(v8::String::New("getHeight"), v8::FunctionTemplate::New(GetHeight));
 	templ->Set(v8::String::New("release"), v8::FunctionTemplate::New(JSRelease));
 	templ->Set(v8::String::New("planar"), v8::False(), v8::PropertyAttribute::ReadOnly);
 	templ->Set(v8::String::New("interleaved"), v8::True(), v8::PropertyAttribute::ReadOnly);
 	templ->SetAccessor(v8::String::New("data"), JSGetData);
+	templ->SetInternalFieldCount(1);
 	return scope.Close(templ);
 }
+
+#if 0
 
 JSPlanarVideoFrame::JSPlanarVideoFrame(PVideoFrame aFrame, v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> templ)
 	: JSVideoFrame(aFrame, isolate, templ) {
@@ -306,5 +339,7 @@ v8::Handle<v8::ObjectTemplate> JSPlanarVideoFrame::CreateTemplate(v8::Isolate* i
 	templ->SetAccessor(v8::String::New("dataV"), JSGetDataV);
 	return scope.Close(templ);
 }
+
+#endif
 
 };

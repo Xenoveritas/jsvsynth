@@ -1,0 +1,2 @@
+# In this directory only, we want to ignore .html files because they're created via marked
+*.html

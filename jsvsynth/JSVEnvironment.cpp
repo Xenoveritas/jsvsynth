@@ -22,6 +22,7 @@
 #include "JSVEnvironment.h"
 #include "JSClip.h"
 #include "Function.h"
+#include "JSFilter.h"
 #include "JSVideoFrame.h"
 #include "util.h"
 
@@ -45,7 +46,7 @@ JSVEnvironment::JSVEnvironment(IScriptEnvironment* env) : avisynthEnv(env) {
 	clipTemplate.Reset(isolate, JSClip::CreateObjectTemplate(context));
 	avsFuncWrapperTemplate.Reset(isolate, AVSFunction::CreateTemplate());
 	interleavedVideoFrameTemplate.Reset(isolate, JSInterleavedVideoFrame::CreateTemplate(isolate));
-	planarVideoFrameTemplate.Reset(isolate, JSPlanarVideoFrame::CreateTemplate(isolate));
+	//planarVideoFrameTemplate.Reset(isolate, JSPlanarVideoFrame::CreateTemplate(isolate));
 }
 
 JSVEnvironment::~JSVEnvironment() {
@@ -102,6 +103,8 @@ void JSVEnvironment::CreateGlobals(v8::Handle<v8::Object> global) {
 	// Our first step is to create the template. We don't need to hang onto it
 	// because there's only ever the single object.
 	v8::Handle<v8::ObjectTemplate> avisynthTemplate = v8::ObjectTemplate::New();
+	// Classes inside our "namespace"
+	avisynthTemplate->Set(v8::String::New("Filter"), JSFilter::CreateFilterConstructor(isolate));
 	// Set constants on it
 	avisynthTemplate->Set(v8::String::New("PLANAR_Y"), v8::Int32::New(PLANAR_Y), v8::ReadOnly);
 	avisynthTemplate->Set(v8::String::New("PLANAR_U"), v8::Int32::New(PLANAR_U), v8::ReadOnly);
@@ -176,13 +179,19 @@ v8::Handle<v8::Object> JSVEnvironment::WrapClip(PClip clip) {
 }
 
 v8::Handle<v8::Object> JSVEnvironment::WrapVideoFrame(PVideoFrame frame, const VideoInfo& vi) {
+	TRACE("Wrapping video frame...\n");
 	// Sadly we need the video info to know which type of video access to provide.
 	JSVideoFrame* wrappedFrame;
 	if (vi.IsPlanar()) {
-		wrappedFrame = new JSPlanarVideoFrame(frame, isolate, v8::Local<v8::ObjectTemplate>::New(isolate, planarVideoFrameTemplate));
+		TRACE("VIDEO FRAME IS PLANAR, NOT IMPLEMENTED YET!\n");
+		// FIXME: Implement this.
+		return v8::Handle<v8::Object>();
+		//wrappedFrame = new JSPlanarVideoFrame(frame, isolate, v8::Local<v8::ObjectTemplate>::New(isolate, planarVideoFrameTemplate));
 	} else {
-		wrappedFrame = new JSInterleavedVideoFrame(frame, isolate, v8::Local<v8::ObjectTemplate>::New(isolate, interleavedVideoFrameTemplate));
+		TRACE("Wrapping frame...\n");
+		wrappedFrame = new JSInterleavedVideoFrame(frame, vi, isolate, v8::Local<v8::ObjectTemplate>::New(isolate, interleavedVideoFrameTemplate));
 	}
+	TRACE("Returning wrapped frame.\n");
 	return wrappedFrame->GetInstance(isolate);
 }
 
@@ -315,6 +324,7 @@ void ThrowErrorInAviSynth(IScriptEnvironment* env, v8::Isolate* isolate, v8::Try
 v8::Handle<v8::Value> JSVEnvironment::ConvertToJS(AVSValue value) {
 	// FIXME: TRACE_CONVERSIONS should also dump stuff here
 	if (!value.Defined()) {
+		// TODO: null or undefined?
 		return v8::Null();
 	} else if (value.IsString()) {
 		return v8::String::New(value.AsString());

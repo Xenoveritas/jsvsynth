@@ -56,6 +56,7 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit2(IScri
 	TRACE("Creating V8 scripting environment...\n");
 	// For the duration of this AviSynth environment, we need to have a scripting environment.
 	jsv::JSVEnvironment* jsvenv = new jsv::JSVEnvironment(env);
+	TRACE("JSVEnvironment instance is %p\n", jsvenv);
 	TRACE("V8 environment created.\n");
 
 	// Function that runs a bit of JavaScript that's given as a string argument.
