@@ -74,7 +74,6 @@ void JSFilter::FilterConstructor(const v8::FunctionCallbackInfo<v8::Value>& info
 }
 
 PVideoFrame __stdcall JSFilter::GetFrame(int n, IScriptEnvironment* env) {
-	TRACE("GetFrame in JSFilter...\n");
 	// Before we do anything, we need to set up the V8 environment
 	scriptingEnvironment->EnterIsolate();
 	v8::Isolate* isolate = scriptingEnvironment->GetIsolate();
@@ -91,7 +90,6 @@ PVideoFrame __stdcall JSFilter::GetFrame(int n, IScriptEnvironment* env) {
 	PVideoFrame result;
 	// FIXME: Any sort of error handling
 	if (jsGetFrame->IsFunction()) {
-		TRACE("Running getFrame()...\n");
 		// Invoke with the current frame number
 		v8::Handle<v8::Function> f = v8::Handle<v8::Function>::Cast(jsGetFrame);
 		v8::Handle<v8::Value> argv[] = { v8::Int32::New(n) };

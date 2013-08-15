@@ -55,31 +55,25 @@ public:
 private:
 	void PopulateInstance(v8::Handle<v8::Object> inst);
 	static void JSRelease(const v8::FunctionCallbackInfo<v8::Value>&);
-	static void GetPitch(const v8::FunctionCallbackInfo<v8::Value>&);
-	static void GetRowSize(const v8::FunctionCallbackInfo<v8::Value>&);
-	static void GetHeight(const v8::FunctionCallbackInfo<v8::Value>&);
 	static void JSGetData(v8::Local<v8::String>, const v8::PropertyCallbackInfo<v8::Value>&);
 	v8::Persistent<v8::ArrayBuffer> dataBufferInstance;
 	v8::Persistent<v8::Uint8Array> dataInstance;
 };
 
-#if 0
-Screw this for now.
 /**
  * JavaScript wrapper for a single VideoFrame with the planes stored separately.
  */
 class JSPlanarVideoFrame : public JSVideoFrame {
 public:
-	JSPlanarVideoFrame(PVideoFrame frame, v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> templ);
+	JSPlanarVideoFrame(PVideoFrame frame, const VideoInfo& vi, v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> templ);
 	~JSPlanarVideoFrame();
 	virtual void Release();
 	static v8::Handle<v8::ObjectTemplate> CreateTemplate(v8::Isolate* isolate);
 	v8::Handle<v8::Uint8Array> GetData(v8::Isolate* isolate, int plane);
 private:
+	void PopulateInstance(v8::Handle<v8::Object> inst);
+	void PopulatePlaneInstance(v8::Handle<v8::Object> inst, int plane);
 	static void JSRelease(const v8::FunctionCallbackInfo<v8::Value>&);
-	static void GetPitch(const v8::FunctionCallbackInfo<v8::Value>&);
-	static void GetRowSize(const v8::FunctionCallbackInfo<v8::Value>&);
-	static void GetHeight(const v8::FunctionCallbackInfo<v8::Value>&);
 	static void JSGetDataY(v8::Local<v8::String>, const v8::PropertyCallbackInfo<v8::Value>&);
 	static void JSGetDataU(v8::Local<v8::String>, const v8::PropertyCallbackInfo<v8::Value>&);
 	static void JSGetDataV(v8::Local<v8::String>, const v8::PropertyCallbackInfo<v8::Value>&);
@@ -90,7 +84,5 @@ private:
 	v8::Persistent<v8::Uint8Array> dataUInstance;
 	v8::Persistent<v8::Uint8Array> dataVInstance;
 };
-
-#endif
 
 };

@@ -23,12 +23,13 @@ EXIT /B 1
 
 :HaveVdub
 
-REM TODO: Create this file based on a parameter or something.
+SET TEST_MODE=Debug
+IF "%1"=="/Release" SET TEST_MODE=Release
 
 REM Don't ask me why this needs to be a full path, but sometimes apparently it
 REM does. Other times AviSynth will happily load it as relative. So don't care
 REM at this point.
-ECHO LoadPlugin("%CD%\..\Debug\jsvsynth.dll")>loadplugin.avsi
+ECHO LoadPlugin("%CD%\..\%TEST_MODE%\jsvsynth.dll")>loadplugin.avsi
 
 SET TEST_LOG=results.txt
 
@@ -38,6 +39,8 @@ ECHO ============>>%TEST_LOG%
 SET TESTS_PASSED=0
 SET TESTS_FAILED=0
 SET TESTS_ERRORED=0
+
+ECHO Running tests for %TEST_MODE% build...
 
 REM Always run sanity.avs - if it fails, the environment isn't sane, and we
 REM can't continue.

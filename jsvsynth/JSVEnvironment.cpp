@@ -46,7 +46,7 @@ JSVEnvironment::JSVEnvironment(IScriptEnvironment* env) : avisynthEnv(env) {
 	clipTemplate.Reset(isolate, JSClip::CreateObjectTemplate(context));
 	avsFuncWrapperTemplate.Reset(isolate, AVSFunction::CreateTemplate());
 	interleavedVideoFrameTemplate.Reset(isolate, JSInterleavedVideoFrame::CreateTemplate(isolate));
-	//planarVideoFrameTemplate.Reset(isolate, JSPlanarVideoFrame::CreateTemplate(isolate));
+	planarVideoFrameTemplate.Reset(isolate, JSPlanarVideoFrame::CreateTemplate(isolate));
 }
 
 JSVEnvironment::~JSVEnvironment() {
@@ -76,22 +76,38 @@ void ConsoleLog(const v8::FunctionCallbackInfo<v8::Value>& args) {
 		if (first) {
 			first = false;
 		} else {
-			std::cout << " ";
+			std::cerr << " ";
 		}
 		v8::String::Utf8Value str(args[i]);
-		std::cout << ToCString(str);
+		std::cerr << ToCString(str);
 	}
-	std::cout << std::endl;
-	std::cout.flush();
+	std::cerr << std::endl;
+	std::cerr.flush();
 }
 
 #ifdef _DEBUG
 
+#define ALERT_MAX_SIZE		4095
+
 void DebugShowAlert(const v8::FunctionCallbackInfo<v8::Value>& args) {
+	// Create a buffer for the string message. Note that's characters, not bytes.
+	WCHAR message[ALERT_MAX_SIZE + 1];
+	int offset = 0;
+	int length = args.Length();
+	for (int i = 0; i < length && offset < ALERT_MAX_SIZE; i++) {
+		v8::Handle<v8::String> str = args[i]->ToString();
+		int stringLen = str->Length();
+		if (offset + stringLen > ALERT_MAX_SIZE) {
+			stringLen = ALERT_MAX_SIZE - offset;
+		}
+		str->Write((uint16_t*)(message + offset), 0, stringLen);
+		offset += stringLen;
+	}
+	message[offset] = 0;
 	// TODO: Actually pay attention to the arguments
 	// This exists primarily to "pause" a running AviSynth script long enough
 	// to attach the debugger to it.
-	MessageBox(NULL, L"Debug Alert Message", L"Debug", MB_ICONEXCLAMATION | MB_OK);
+	MessageBox(NULL, message, L"Debug", MB_ICONEXCLAMATION | MB_OK);
 }
 
 #endif
@@ -193,16 +209,12 @@ v8::Handle<v8::Object> JSVEnvironment::WrapClip(PClip clip) {
 }
 
 v8::Handle<v8::Object> JSVEnvironment::WrapVideoFrame(PVideoFrame frame, const VideoInfo& vi) {
-	TRACE("Wrapping video frame...\n");
 	// Sadly we need the video info to know which type of video access to provide.
 	JSVideoFrame* wrappedFrame;
 	if (vi.IsPlanar()) {
-		TRACE("VIDEO FRAME IS PLANAR, NOT IMPLEMENTED YET!\n");
-		// FIXME: Implement this.
-		return v8::Handle<v8::Object>();
-		//wrappedFrame = new JSPlanarVideoFrame(frame, isolate, v8::Local<v8::ObjectTemplate>::New(isolate, planarVideoFrameTemplate));
+		TRACE("Wrapping planar video frame...\n");
+		wrappedFrame = new JSPlanarVideoFrame(frame, vi, isolate, v8::Local<v8::ObjectTemplate>::New(isolate, planarVideoFrameTemplate));
 	} else {
-		TRACE("Wrapping frame...\n");
 		wrappedFrame = new JSInterleavedVideoFrame(frame, vi, isolate, v8::Local<v8::ObjectTemplate>::New(isolate, interleavedVideoFrameTemplate));
 	}
 	TRACE("Returning wrapped frame.\n");

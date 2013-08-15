@@ -39,8 +39,6 @@ JSVideoFrame::JSVideoFrame(PVideoFrame aFrame, const VideoInfo& aVI, v8::Isolate
 JSVideoFrame::~JSVideoFrame() {
 	instance.Dispose();
 }
-	static bool IsWrappedVideoFrame(v8::Handle<v8::Object> obj);
-	static JSVideoFrame* UnwrapVideoFrame(v8::Handle<v8::Object> obj);
 
 v8::Handle<v8::Object> JSVideoFrame::GetInstance(v8::Isolate* isolate) {
 	v8::HandleScope scope(isolate);
@@ -80,6 +78,7 @@ void JSVideoFrame::Release() {
 }
 
 v8::Handle<v8::ArrayBuffer> JSVideoFrame::WrapData(v8::Isolate* isolate, BYTE* data, int length) {
+	TRACE("Wrapping frame data at %p (%d bytes)\n", data, length);
 	v8::HandleScope scope(isolate);
 	v8::Context::Scope contextScope(isolate->GetCurrentContext());
 	v8::Handle<v8::ArrayBuffer> result = v8::ArrayBuffer::New(data, length);
@@ -124,57 +123,19 @@ void JSInterleavedVideoFrame::JSRelease(const v8::FunctionCallbackInfo<v8::Value
 	self->Release();
 }
 
-void JSInterleavedVideoFrame::GetPitch(const v8::FunctionCallbackInfo<v8::Value>& info) {
-	JSInterleavedVideoFrame* self = UnwrapSelf<JSInterleavedVideoFrame>(info.This());
-	if (info.Length() >= 1) {
-		// If we have an argument, it needs to be the plane (int constant)
-		info.GetReturnValue().Set(v8::Int32::New(self->frame->GetPitch(info[0]->Int32Value())));
-	} else {
-		info.GetReturnValue().Set(v8::Int32::New(self->frame->GetPitch()));
-	}
-}
-
-void JSInterleavedVideoFrame::GetRowSize(const v8::FunctionCallbackInfo<v8::Value>& info) {
-	JSInterleavedVideoFrame* self = UnwrapSelf<JSInterleavedVideoFrame>(info.This());
-	if (info.Length() >= 1) {
-		// If we have an argument, it needs to be the plane
-		info.GetReturnValue().Set(v8::Int32::New(self->frame->GetRowSize(info[0]->Int32Value())));
-	} else {
-		info.GetReturnValue().Set(v8::Int32::New(self->frame->GetRowSize()));
-	}
-}
-
-void JSInterleavedVideoFrame::GetHeight(const v8::FunctionCallbackInfo<v8::Value>& info) {
-	JSInterleavedVideoFrame* self = UnwrapSelf<JSInterleavedVideoFrame>(info.This());
-	if (info.Length() >= 1) {
-		// If we have an argument, it needs to be the plane
-		info.GetReturnValue().Set(v8::Int32::New(self->frame->GetHeight(info[0]->Int32Value())));
-	} else {
-		info.GetReturnValue().Set(v8::Int32::New(self->frame->GetHeight()));
-	}
-}
-
 void JSInterleavedVideoFrame::JSGetData(v8::Local<v8::String>, const v8::PropertyCallbackInfo<v8::Value>& info) {
-	TRACE(__FUNCTION__ "\n");
 	v8::HandleScope scope(info.GetIsolate());
-	TRACE("Unwrap self\n");
 	JSInterleavedVideoFrame* self = UnwrapSelf<JSInterleavedVideoFrame>(info.This());
-	TRACE("Unwrapped self\n");
 	v8::Handle<v8::Uint8Array> result = self->GetData(info.GetIsolate());
-	TRACE("Got data\n");
 	if (result.IsEmpty()) {
-		TRACE("But it failed, returning null\n");
 		info.GetReturnValue().Set(v8::Null());
 	} else {
-		TRACE("Returning it\n");
 		info.GetReturnValue().Set(result);
 	}
 }
 
 v8::Handle<v8::Uint8Array> JSInterleavedVideoFrame::GetData(v8::Isolate* isolate) {
-	TRACE(__FUNCTION__ "\n");
 	if (released) {
-		TRACE("Released: giving up\n");
 		return v8::Handle<v8::Uint8Array>();
 	}
 	if (dataInstance.IsEmpty()) {
@@ -220,10 +181,10 @@ v8::Handle<v8::ObjectTemplate> JSInterleavedVideoFrame::CreateTemplate(v8::Isola
 	return scope.Close(templ);
 }
 
-#if 0
-
-JSPlanarVideoFrame::JSPlanarVideoFrame(PVideoFrame aFrame, v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> templ)
-	: JSVideoFrame(aFrame, isolate, templ) {
+JSPlanarVideoFrame::JSPlanarVideoFrame(PVideoFrame aFrame, const VideoInfo& vi, v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> templ)
+	: JSVideoFrame(aFrame, vi, isolate, templ) {
+	v8::HandleScope scope(isolate);
+	PopulateInstance(v8::Local<v8::Object>::New(isolate, instance));
 }
 
 JSPlanarVideoFrame::~JSPlanarVideoFrame() {
@@ -233,6 +194,23 @@ JSPlanarVideoFrame::~JSPlanarVideoFrame() {
 	dataYInstance.Dispose();
 	dataUInstance.Dispose();
 	dataVInstance.Dispose();
+}
+
+void JSPlanarVideoFrame::PopulateInstance(v8::Handle<v8::Object> inst) {
+	// We really need to populate the various planes
+	PopulatePlaneInstance(inst->Get(v8::String::New("y"))->ToObject(), PLANAR_Y);
+	PopulatePlaneInstance(inst->Get(v8::String::New("u"))->ToObject(), PLANAR_U);
+	PopulatePlaneInstance(inst->Get(v8::String::New("v"))->ToObject(), PLANAR_V);
+	inst->SetInternalField(0, v8::External::New(this));
+}
+
+void JSPlanarVideoFrame::PopulatePlaneInstance(v8::Handle<v8::Object> inst, int plane) {
+	inst->Set(v8::String::New("pitch"), v8::Int32::New(frame->GetPitch(plane)), v8::PropertyAttribute::ReadOnly);
+	inst->Set(v8::String::New("rowSize"), v8::Int32::New(frame->GetRowSize(plane)), v8::PropertyAttribute::ReadOnly);
+	inst->Set(v8::String::New("height"), v8::Int32::New(frame->GetHeight(plane)), v8::PropertyAttribute::ReadOnly);
+	inst->Set(v8::String::New("bitsPerPixel"), v8::Int32::New(vi.BitsPerPixel()), v8::PropertyAttribute::ReadOnly);
+	inst->Set(v8::String::New("bytesPerPixel"), v8::Int32::New(vi.BytesFromPixels(1)), v8::PropertyAttribute::ReadOnly);
+	inst->SetInternalField(0, v8::External::New(this));
 }
 
 void JSPlanarVideoFrame::Release() {
@@ -249,36 +227,6 @@ void JSPlanarVideoFrame::Release() {
 void JSPlanarVideoFrame::JSRelease(const v8::FunctionCallbackInfo<v8::Value>& info) {
 	JSPlanarVideoFrame* self = UnwrapSelf<JSPlanarVideoFrame>(info.This());
 	self->Release();
-}
-
-void JSPlanarVideoFrame::GetPitch(const v8::FunctionCallbackInfo<v8::Value>& info) {
-	JSPlanarVideoFrame* self = UnwrapSelf<JSPlanarVideoFrame>(info.This());
-	if (info.Length() >= 1) {
-		// If we have an argument, it needs to be the plane (int constant)
-		info.GetReturnValue().Set(v8::Int32::New(self->frame->GetPitch(info[0]->Int32Value())));
-	} else {
-		info.GetReturnValue().Set(v8::Int32::New(self->frame->GetPitch()));
-	}
-}
-
-void JSPlanarVideoFrame::GetRowSize(const v8::FunctionCallbackInfo<v8::Value>& info) {
-	JSPlanarVideoFrame* self = UnwrapSelf<JSPlanarVideoFrame>(info.This());
-	if (info.Length() >= 1) {
-		// If we have an argument, it needs to be the plane
-		info.GetReturnValue().Set(v8::Int32::New(self->frame->GetRowSize(info[0]->Int32Value())));
-	} else {
-		info.GetReturnValue().Set(v8::Int32::New(self->frame->GetRowSize()));
-	}
-}
-
-void JSPlanarVideoFrame::GetHeight(const v8::FunctionCallbackInfo<v8::Value>& info) {
-	JSPlanarVideoFrame* self = UnwrapSelf<JSPlanarVideoFrame>(info.This());
-	if (info.Length() >= 1) {
-		// If we have an argument, it needs to be the plane
-		info.GetReturnValue().Set(v8::Int32::New(self->frame->GetHeight(info[0]->Int32Value())));
-	} else {
-		info.GetReturnValue().Set(v8::Int32::New(self->frame->GetHeight()));
-	}
 }
 
 #define PLANAR_JS_GET_DATA(PLANE)		void JSPlanarVideoFrame::JSGetData ## PLANE (v8::Local<v8::String>, const v8::PropertyCallbackInfo<v8::Value>& info) { \
@@ -302,6 +250,10 @@ v8::Handle<v8::Uint8Array> JSPlanarVideoFrame::GetData(v8::Isolate* isolate, int
 	}
 	if (dataYInstance.IsEmpty()) {
 		v8::HandleScope scope(isolate);
+		if (!frame->IsWritable()) {
+			TRACE("Had to make the frame writeable\n");
+			JSVEnvironment::GetCurrent()->GetAVSScriptEnvironment()->MakeWritable(&frame);
+		}
 		// For planar data, we always grab the planes all at once. The reason
 		// for this is simple: AviSynth doesn't say so, but you need to grab
 		// the pointer to the Y plane *FIRST* and then the U and V planes.
@@ -354,18 +306,23 @@ v8::Handle<v8::Uint8Array> JSPlanarVideoFrame::GetData(v8::Isolate* isolate, int
 v8::Handle<v8::ObjectTemplate> JSPlanarVideoFrame::CreateTemplate(v8::Isolate* isolate) {
 	v8::HandleScope scope(isolate);
 	v8::Handle<v8::ObjectTemplate> templ = v8::ObjectTemplate::New();
-	templ->Set(v8::String::New("getPitch"), v8::FunctionTemplate::New(GetPitch));
-	templ->Set(v8::String::New("getRowSize"), v8::FunctionTemplate::New(GetRowSize));
-	templ->Set(v8::String::New("getHeight"), v8::FunctionTemplate::New(GetHeight));
 	templ->Set(v8::String::New("release"), v8::FunctionTemplate::New(JSRelease));
 	templ->Set(v8::String::New("planar"), v8::True(), v8::PropertyAttribute::ReadOnly);
 	templ->Set(v8::String::New("interleaved"), v8::False(), v8::PropertyAttribute::ReadOnly);
-	templ->SetAccessor(v8::String::New("dataY"), JSGetDataY);
-	templ->SetAccessor(v8::String::New("dataU"), JSGetDataU);
-	templ->SetAccessor(v8::String::New("dataV"), JSGetDataV);
+	templ->SetInternalFieldCount(1);
+	v8::Handle<v8::ObjectTemplate> yPlane = v8::ObjectTemplate::New();
+	yPlane->SetAccessor(v8::String::New("data"), JSGetDataY);
+	yPlane->SetInternalFieldCount(1);
+	templ->Set("y", yPlane);
+	v8::Handle<v8::ObjectTemplate> uPlane = v8::ObjectTemplate::New();
+	uPlane->SetAccessor(v8::String::New("data"), JSGetDataU);
+	uPlane->SetInternalFieldCount(1);
+	templ->Set("u", uPlane);
+	v8::Handle<v8::ObjectTemplate> vPlane = v8::ObjectTemplate::New();
+	vPlane->SetAccessor(v8::String::New("data"), JSGetDataV);
+	vPlane->SetInternalFieldCount(1);
+	templ->Set("v", vPlane);
 	return scope.Close(templ);
 }
-
-#endif
 
 };

@@ -1,8 +1,7 @@
 Import("tests.avsi")
 
 JavaScript("""
-//var ab = new ArrayBuffer(640*480*8);
-//console.alert();
+//console.alert("Attach debugger now");
 var filter = new AviSynth.Filter(avs.BlankClip());
 
 assert(filter.getFrame != null, "getFrame wasn't set");
@@ -20,4 +19,32 @@ filter.getFrame = function(num) {
 }
 
 filter;
+
+var yuvFilter = new AviSynth.Filter(avs.BlankClip({pixel_type:"YV12"}));
+
+assert(yuvFilter.getFrame != null, "getFrame wasn't set");
+assert(yuvFilter.child != null, "child isn't available to JavaScript");
+
+yuvFilter.getFrame = function(num) {
+	var f = this.child.getFrame(num);
+	console.log("Got frame");
+	var data = f.y.data;
+	for (var i = 0; i < data.length; i++) {
+		data[i] = 128;
+	}
+	console.log("Modified Y plane");
+	data = f.u.data;
+	for (var i = 0; i < data.length; i++) {
+		data[i] = 255;
+	}
+	console.log("Modified U plane");
+	data = f.v.data;
+	for (var i = 0; i < data.length; i++) {
+		data[i] = 0;
+	}
+	console.log("Modified V plane");
+	return f;
+}
+
+yuvFilter;
 """)
