@@ -89,6 +89,8 @@ void ConsoleLog(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
 void DebugShowAlert(const v8::FunctionCallbackInfo<v8::Value>& args) {
 	// TODO: Actually pay attention to the arguments
+	// This exists primarily to "pause" a running AviSynth script long enough
+	// to attach the debugger to it.
 	MessageBox(NULL, L"Debug Alert Message", L"Debug", MB_ICONEXCLAMATION | MB_OK);
 }
 
