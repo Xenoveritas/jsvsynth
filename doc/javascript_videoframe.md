@@ -54,6 +54,10 @@ In AviSynth, if you have a planar data source, it will be either YV12 or I420
 means that `bitPerPixel` will be 12 and `bytesPerPixel` will be an inaccurate
 1.
 
+**NOTE:** Accessing the `data` element at all will force JSVSynth to make the
+frame "writeable" which will effectively create an extra copy of the frame.
+There is currently no way to get read-only access to a frame.
+
 Functions
 ---------
 

@@ -16,6 +16,9 @@
  */
 #include "stdafx.h"
 #include "JSVideoFrame.h"
+#include "JSVEnvironment.h"
+
+#include <iostream>
 
 #define JSVIDEOFRAME_HIDDEN_PROP	"jsv::VideoFrame"
 
@@ -28,7 +31,6 @@ JSVideoFrame::JSVideoFrame(PVideoFrame aFrame, const VideoInfo& aVI, v8::Isolate
 	// Create a new instance
 	TRACE("Creating new instance...\n");
 	v8::Handle<v8::Object> inst = v8::Local<v8::ObjectTemplate>::New(isolate, templ)->NewInstance();
-	inst->SetInternalField(0, v8::External::New(this));
 	inst->SetHiddenValue(v8::String::New(JSVIDEOFRAME_HIDDEN_PROP), v8::True());
 	instance.Reset(isolate, inst);
 	madeWeak = false;
@@ -79,6 +81,7 @@ void JSVideoFrame::Release() {
 
 v8::Handle<v8::ArrayBuffer> JSVideoFrame::WrapData(v8::Isolate* isolate, BYTE* data, int length) {
 	v8::HandleScope scope(isolate);
+	v8::Context::Scope contextScope(isolate->GetCurrentContext());
 	v8::Handle<v8::ArrayBuffer> result = v8::ArrayBuffer::New(data, length);
 	// To ensure somewhat cleaner garbage collection, add ourselves as a property.
 	// This makes sure anyone hanging onto a data buffer (don't do that!) but not the
@@ -113,6 +116,7 @@ void JSInterleavedVideoFrame::PopulateInstance(v8::Handle<v8::Object> inst) {
 	inst->Set(v8::String::New("height"), v8::Int32::New(frame->GetHeight()), v8::PropertyAttribute::ReadOnly);
 	inst->Set(v8::String::New("bitsPerPixel"), v8::Int32::New(vi.BitsPerPixel()), v8::PropertyAttribute::ReadOnly);
 	inst->Set(v8::String::New("bytesPerPixel"), v8::Int32::New(vi.BytesFromPixels(1)), v8::PropertyAttribute::ReadOnly);
+	inst->SetInternalField(0, v8::External::New(this));
 }
 
 void JSInterleavedVideoFrame::JSRelease(const v8::FunctionCallbackInfo<v8::Value>& info) {
@@ -151,26 +155,47 @@ void JSInterleavedVideoFrame::GetHeight(const v8::FunctionCallbackInfo<v8::Value
 }
 
 void JSInterleavedVideoFrame::JSGetData(v8::Local<v8::String>, const v8::PropertyCallbackInfo<v8::Value>& info) {
-	JSInterleavedVideoFrame* self = UnwrapSelf<JSInterleavedVideoFrame>(info.This());
+	TRACE(__FUNCTION__ "\n");
 	v8::HandleScope scope(info.GetIsolate());
+	TRACE("Unwrap self\n");
+	JSInterleavedVideoFrame* self = UnwrapSelf<JSInterleavedVideoFrame>(info.This());
+	TRACE("Unwrapped self\n");
 	v8::Handle<v8::Uint8Array> result = self->GetData(info.GetIsolate());
+	TRACE("Got data\n");
 	if (result.IsEmpty()) {
+		TRACE("But it failed, returning null\n");
 		info.GetReturnValue().Set(v8::Null());
 	} else {
+		TRACE("Returning it\n");
 		info.GetReturnValue().Set(result);
 	}
 }
 
 v8::Handle<v8::Uint8Array> JSInterleavedVideoFrame::GetData(v8::Isolate* isolate) {
+	TRACE(__FUNCTION__ "\n");
 	if (released) {
+		TRACE("Released: giving up\n");
 		return v8::Handle<v8::Uint8Array>();
 	}
 	if (dataInstance.IsEmpty()) {
+		TRACE("Data instance is emtpy, building data\n");
 		v8::HandleScope scope(isolate);
 		// If I could make this "copy on write" I'd love to, but there doesn't
 		// seem to really be a way to do that, so instead just always make it
 		// writable.
-		v8::Handle<v8::ArrayBuffer> dataBuffer = WrapData(isolate, frame->GetWritePtr(), frame->GetRowSize() * frame->GetHeight());
+		TRACE("Getting the write pointer\n");
+		BYTE* dataptr;
+		if (!frame->IsWritable()) {
+			TRACE("Had to make the frame writeable\n");
+			JSVEnvironment::GetCurrent()->GetAVSScriptEnvironment()->MakeWritable(&frame);
+		}
+		dataptr = frame->GetWritePtr();
+		if (dataptr == NULL) {
+			JSV_ERROR("Write pointer is null!");
+			// Return an empty handle
+			return v8::Handle<v8::Uint8Array>();
+		}
+		v8::Handle<v8::ArrayBuffer> dataBuffer = WrapData(isolate, dataptr, frame->GetPitch() * frame->GetHeight());
 		// And create the views
 		v8::Handle<v8::Uint8Array> data = v8::Uint8Array::New(dataBuffer, 0, dataBuffer->ByteLength());
 		// And finally, persist them:
@@ -179,6 +204,7 @@ v8::Handle<v8::Uint8Array> JSInterleavedVideoFrame::GetData(v8::Isolate* isolate
 		// And, since we still have this lovely scope here, do the return here rather than fall through
 		return scope.Close(data);
 	}
+	TRACE("Returning cached version\n");
 	// If we're here, we can use a cached version.
 	return v8::Local<v8::Uint8Array>::New(isolate, dataInstance);
 }

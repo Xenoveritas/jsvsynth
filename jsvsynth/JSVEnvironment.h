@@ -88,4 +88,13 @@ private:
 	friend class AVSFunction;
 };
 
+class JSVAllocator : public v8::ArrayBuffer::Allocator {
+public:
+	JSVAllocator() { }
+	~JSVAllocator() { }
+	virtual void* Allocate(size_t length);
+	virtual void* AllocateUninitialized(size_t length);
+	virtual void Free(void* data, size_t length);
+};
+
 };

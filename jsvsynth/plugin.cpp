@@ -17,6 +17,7 @@
 // Main entry point of the JVSSynth plugin from AviSynth.
 #include "stdafx.h"
 #include "JSVEnvironment.h"
+#include <iostream>
 
 void __cdecl jsv_Shutdown(void* user_data, IScriptEnvironment* env) {
 	TRACE("Shutting down V8 and freeing resources...\n");
@@ -51,8 +52,25 @@ AVSValue __cdecl JS_Import(AVSValue args, void* user_data, IScriptEnvironment* e
 	return result;
 }
 
+void InitV8() {
+	TRACE("Initializing V8 settings...\n");
+	v8::V8::InitializeICU();
+	// Pretend we're a command line program and set some crap for V8
+	// TODO (maybe): Somehow allow this to be set whent he pll
+	int fake_argc = 2;
+	char **fake_argv = new char*[3];
+	fake_argv[0] = NULL;
+	// We need to enable the typed arrays feature for our internal system
+	fake_argv[1] = _strdup("--harmony-typed-arrays");
+	v8::V8::SetFlagsFromCommandLine(&fake_argc, fake_argv, false);
+	free(fake_argv[1]);
+	delete[] fake_argv;
+	v8::V8::SetArrayBufferAllocator(new jsv::JSVAllocator());
+}
+
 extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit2(IScriptEnvironment* env) {
 	TRACE("Plugin init with %p\n", env);
+	InitV8();
 	TRACE("Creating V8 scripting environment...\n");
 	// For the duration of this AviSynth environment, we need to have a scripting environment.
 	jsv::JSVEnvironment* jsvenv = new jsv::JSVEnvironment(env);

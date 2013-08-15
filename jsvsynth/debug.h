@@ -16,15 +16,18 @@
  */
 #pragma once
 
-#ifdef _DEBUG
 #include <stdio.h>
 
-#define TRACE(fmt, ...)	fprintf(stderr, fmt, __VA_ARGS__);fflush(stderr)
+#ifdef _DEBUG
+
+#define TRACE(FORMAT, ...)	fprintf(stderr, FORMAT, __VA_ARGS__);fflush(stderr)
 
 #else
 
-#define TRACE(fmt, ...)	do { } while(0)
+#define TRACE(FORMAT, ...)	do { } while(0)
 
 #endif
+
+#define JSV_ERROR(FORMAT, ...)	fprintf(stderr, "ERROR (%s): " FORMAT "\n", __FUNCTION__, __VA_ARGS__);fflush(stderr)
 
 //#define TRACE_CONVERSIONS

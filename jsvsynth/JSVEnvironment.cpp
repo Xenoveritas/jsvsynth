@@ -85,6 +85,15 @@ void ConsoleLog(const v8::FunctionCallbackInfo<v8::Value>& args) {
 	std::cout.flush();
 }
 
+#ifdef _DEBUG
+
+void DebugShowAlert(const v8::FunctionCallbackInfo<v8::Value>& args) {
+	// TODO: Actually pay attention to the arguments
+	MessageBox(NULL, L"Debug Alert Message", L"Debug", MB_ICONEXCLAMATION | MB_OK);
+}
+
+#endif
+
 v8::Handle<v8::Context> JSVEnvironment::CreateContext(v8::Isolate* isolate) {
 	// Create a template for the global object.
 	v8::Handle<v8::ObjectTemplate> global = v8::ObjectTemplate::New();
@@ -92,6 +101,9 @@ v8::Handle<v8::Context> JSVEnvironment::CreateContext(v8::Isolate* isolate) {
 	// Create the console object
 	v8::Handle<v8::ObjectTemplate> console = v8::ObjectTemplate::New();
 	console->Set("log", v8::FunctionTemplate::New(ConsoleLog));
+#ifdef _DEBUG
+	console->Set("alert", v8::FunctionTemplate::New(DebugShowAlert));
+#endif
 	global->Set("console", console);
 	return v8::Context::New(isolate, NULL, global);
 }
@@ -469,6 +481,20 @@ AVSValue JSVEnvironment::ImportScript(const char* filename) {
 	// We also need a context scope to do the conversion
 	v8::Context::Scope context_scope(isolate, scriptingContext);
 	return ConvertToAVS(ImportScript(v8::String::New(filename), true));
+}
+
+void* JSVAllocator::Allocate(size_t length) {
+	void* result = malloc(length);
+	memset(result, 0, length);
+	return result;
+}
+
+void* JSVAllocator::AllocateUninitialized(size_t length) {
+	return malloc(length);
+}
+
+void JSVAllocator::Free(void* data, size_t length) {
+	free(data);
 }
 
 };

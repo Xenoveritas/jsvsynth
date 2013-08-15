@@ -58,7 +58,7 @@ void JSFilter::FilterConstructor(const v8::FunctionCallbackInfo<v8::Value>& info
 	TRACE("Create JSFilter\n");
 	v8::HandleScope scope(info.GetIsolate());
 	v8::Handle<v8::Object> self = info.This();
-	TRACE(self.IsEmpty() ? "self is empty\n" : "Have reference to this\n");
+	TRACE("%s", self.IsEmpty() ? "self is empty\n" : "Have reference to this\n");
 	if (info.Length() < 1) {
 		TRACE("No arguments.\n");
 		v8::ThrowException(v8::Exception::ReferenceError(v8::String::New("Missing arguments")));
@@ -94,30 +94,22 @@ PVideoFrame __stdcall JSFilter::GetFrame(int n, IScriptEnvironment* env) {
 		TRACE("Running getFrame()...\n");
 		// Invoke with the current frame number
 		v8::Handle<v8::Function> f = v8::Handle<v8::Function>::Cast(jsGetFrame);
-		if (f.IsEmpty()) {
-			TRACE("Could not cast to function!\n");
-		}
-		TRACE("Cast to function\n");
 		v8::Handle<v8::Value> argv[] = { v8::Int32::New(n) };
-		TRACE("Created argv...\n");
 		v8::Handle<v8::Value> jsResult = f->CallAsFunction(self, 1, argv);
-		TRACE("And back...\n");
 		if (jsResult.IsEmpty()) {
 			// FIXME: Handle this
-			TRACE("Script threw an error\n");
+			JSV_ERROR("Script threw an error\n");
 		} else {
-			v8::String::AsciiValue strval(jsResult);
-			TRACE("Script returned %s\n", strval);
 			if (jsResult->IsObject() && JSVideoFrame::IsWrappedVideoFrame(jsResult->ToObject())) {
-				TRACE("Result is frame\n");
 				result = JSVideoFrame::UnwrapVideoFrame(jsResult->ToObject());
 			} else {
-				TRACE("But result isn't a frame and can't be used!\n");
+				v8::String::AsciiValue asciiResult(jsResult);
+				JSV_ERROR("getFrame returned %s instead of a frame!\n", asciiResult);
 				// FIXME: Handle this
 			}
 		}
 	} else {
-		TRACE("getFrame() isn't a function!\n");
+		JSV_ERROR("getFrame isn't a function!\n");
 		// FIXME: Handle this
 	}
 	scriptingEnvironment->ExitIsolate();

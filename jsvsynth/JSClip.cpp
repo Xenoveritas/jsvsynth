@@ -253,13 +253,7 @@ void JSClip::GetFrame(const v8::FunctionCallbackInfo<v8::Value>& info) {
 	PVideoFrame frame = self->clip->GetFrame(n, env);
 	const VideoInfo& vi = self->clip->GetVideoInfo();
 	v8::Handle<v8::Object> result = jsenv->WrapVideoFrame(frame, vi);
-	if (result.IsEmpty()) {
-		TRACE("WRAPPED FRAME IS EMPTY!\n");
-	}
-	TRACE("Wrapped up frame\n");
 	info.GetReturnValue().Set(result);
-	v8::String::AsciiValue res(result->ToString());
-	TRACE("Returning %s...\n", res);
 }
 
 }; // namespace jsv
