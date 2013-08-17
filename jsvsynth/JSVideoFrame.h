@@ -58,6 +58,7 @@ private:
 	 */
 	void MakeWriteable(v8::Isolate* isolate);
 	static void JSRelease(const v8::FunctionCallbackInfo<v8::Value>&);
+	static void JSGetContext(const v8::FunctionCallbackInfo<v8::Value>&);
 	static void JSGetData(v8::Local<v8::String>, const v8::PropertyCallbackInfo<v8::Value>&);
 	v8::Persistent<v8::ArrayBuffer> dataInstance;
 };
@@ -76,6 +77,7 @@ private:
 	void PopulatePlaneInstance(v8::Handle<v8::Object> inst, int plane);
 	void MakeWriteable(v8::Isolate* isolate);
 	static void JSRelease(const v8::FunctionCallbackInfo<v8::Value>&);
+	static void JSGetContext(const v8::FunctionCallbackInfo<v8::Value>&);
 	static void JSGetDataY(v8::Local<v8::String>, const v8::PropertyCallbackInfo<v8::Value>&);
 	static void JSGetDataU(v8::Local<v8::String>, const v8::PropertyCallbackInfo<v8::Value>&);
 	static void JSGetDataV(v8::Local<v8::String>, const v8::PropertyCallbackInfo<v8::Value>&);

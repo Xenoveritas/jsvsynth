@@ -18,12 +18,24 @@
 #include "stdafx.h"
 #include "JSSimpleRenderingContext.h"
 
+namespace jsv {
+	
+JSSimpleRenderingContext::JSSimpleRenderingContext(void) { }
+JSSimpleRenderingContext::~JSSimpleRenderingContext(void) { }
 
-JSSimpleRenderingContext::JSSimpleRenderingContext(void)
-{
+v8::Handle<v8::ObjectTemplate> JSSimpleRenderingContext::CreateTemplate(v8::Isolate* isolate) {
+	v8::HandleScope scope(isolate);
+	v8::Handle<v8::ObjectTemplate> templ = v8::ObjectTemplate::New();
+	templ->Set("fillRect", v8::FunctionTemplate::New(JSFillRect));
+	templ->Set("drawImage", v8::FunctionTemplate::New(JSDrawImage));
+	templ->SetInternalFieldCount(1);
+	return scope.Close(templ);
 }
 
-
-JSSimpleRenderingContext::~JSSimpleRenderingContext(void)
-{
+void JSSimpleRenderingContext::JSFillRect(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
+
+void JSSimpleRenderingContext::JSDrawImage(const v8::FunctionCallbackInfo<v8::Value>& args) {
+}
+
+};

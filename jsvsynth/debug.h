@@ -20,14 +20,17 @@
 
 #ifdef _DEBUG
 
-#define TRACE(FORMAT, ...)	fprintf(stderr, FORMAT, __VA_ARGS__);fflush(stderr)
+#define TRACE(FORMAT, ...)			fprintf(stderr, FORMAT, __VA_ARGS__);fflush(stderr)
+#define TRACE_MEM()					TRACE("MEMORY: " __FUNCTION__ "\n")
 
 #else
 
-#define TRACE(FORMAT, ...)	do { } while(0)
+#define TRACE(FORMAT, ...)			do { } while(0)
+#define TRACE_MEM(FORMAT, ...)		do { } while(0)
 
 #endif
 
+// FIXME: This should probably do something more than this and is basically a placeholder
 #define JSV_ERROR(FORMAT, ...)	fprintf(stderr, "ERROR (%s): " FORMAT "\n", __FUNCTION__, __VA_ARGS__);fflush(stderr)
 
 //#define TRACE_CONVERSIONS

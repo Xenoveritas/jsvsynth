@@ -512,8 +512,8 @@ AviSynth.SimpleRenderingContext.prototype.fillRect = function(color, x, y, width
  * Draw a different frame onto this frame. The colorspaces of the two frames
  * must match.
  *
- * @param {number} color
- *                  the color as a number
+ * @param {number} frame
+ *                  the other frame to draw onto the context frame
  * @param {number} x
  *                  the x coordinate in pixels
  * @param {number} y

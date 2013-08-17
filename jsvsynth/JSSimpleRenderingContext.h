@@ -16,10 +16,37 @@
  */
 #pragma once
 
-class JSSimpleRenderingContext
-{
+namespace jsv {
+
+/**
+ * Abstract base class for the simple rendering context, providing just the
+ * bridge between JavaScript and the native code.
+ */
+class JSSimpleRenderingContext {
 public:
 	JSSimpleRenderingContext(void);
 	~JSSimpleRenderingContext(void);
+	static v8::Handle<v8::ObjectTemplate> CreateTemplate(v8::Isolate*);
+	virtual void FillRect(UINT32 color, int x, int y, int width, int height) = 0;
+	virtual void DrawImage(PVideoFrame otherFrame, int x, int y) = 0;
+	// TODO: virtual void DrawImage(PVideoFrame otherFrame, int x, int y, int width, int height) = 0;
+	// TODO: virtual void DrawImage(PVideoFrame otherFrame, int x, int y, int width, int height) = 0;
+	// TODO: virtual void DrawImage(PVideoFrame otherFrame, int sx, int sy, int sw, int sh, int dx, int dy, int dw, int dh) = 0;
+private:
+	static void JSFillRect(const v8::FunctionCallbackInfo<v8::Value>&);
+	static void JSDrawImage(const v8::FunctionCallbackInfo<v8::Value>&);
 };
 
+/**
+ * Implementation of the simple rendering context that can draw onto an RGB32
+ * frame.
+ */
+class RGB32SimpleRenderingContext : public JSSimpleRenderingContext {
+public:
+	RGB32SimpleRenderingContext(PVideoFrame frame, v8::Handle<v8::Object> self);
+	~RGB32SimpleRenderingContext();
+private:
+	BYTE* frameData;
+};
+
+};

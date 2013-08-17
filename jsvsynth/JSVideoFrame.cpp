@@ -95,6 +95,7 @@ JSInterleavedVideoFrame::JSInterleavedVideoFrame(PVideoFrame aFrame, const Video
 }
 
 JSInterleavedVideoFrame::~JSInterleavedVideoFrame() {
+	TRACE_MEM();
 	dataInstance.Dispose();
 }
 
@@ -119,6 +120,12 @@ void JSInterleavedVideoFrame::PopulateInstance(v8::Handle<v8::Object> inst) {
 void JSInterleavedVideoFrame::JSRelease(const v8::FunctionCallbackInfo<v8::Value>& info) {
 	JSInterleavedVideoFrame* self = UnwrapSelf<JSInterleavedVideoFrame>(info.This());
 	self->Release();
+}
+
+void JSInterleavedVideoFrame::JSGetContext(const v8::FunctionCallbackInfo<v8::Value>& args) {
+	if (args.Length() < 1) {
+		v8::ThrowException(v8::Exception::Error(v8::String::New("Missing required argument type")));
+	}
 }
 
 void JSInterleavedVideoFrame::JSGetData(v8::Local<v8::String>, const v8::PropertyCallbackInfo<v8::Value>& info) {
@@ -180,6 +187,7 @@ JSPlanarVideoFrame::JSPlanarVideoFrame(PVideoFrame aFrame, const VideoInfo& vi, 
 }
 
 JSPlanarVideoFrame::~JSPlanarVideoFrame() {
+	TRACE_MEM();
 	dataYInstance.Dispose();
 	dataUInstance.Dispose();
 	dataVInstance.Dispose();
@@ -203,6 +211,7 @@ void JSPlanarVideoFrame::PopulatePlaneInstance(v8::Handle<v8::Object> inst, int 
 }
 
 void JSPlanarVideoFrame::Release() {
+	TRACE_MEM();
 	JSVideoFrame::Release();
 	v8::Isolate* isolate = v8::Isolate::GetCurrent();
 	v8::HandleScope scope(isolate);

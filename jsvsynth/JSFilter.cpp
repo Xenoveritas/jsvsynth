@@ -74,42 +74,46 @@ void JSFilter::FilterConstructor(const v8::FunctionCallbackInfo<v8::Value>& info
 
 PVideoFrame __stdcall JSFilter::GetFrame(int n, IScriptEnvironment* env) {
 	// Before we do anything, we need to set up the V8 environment
-	scriptingEnvironment->EnterIsolate();
-	v8::Isolate* isolate = scriptingEnvironment->GetIsolate();
-	// Next up, handle scope
-	v8::HandleScope handleScope(isolate);
-	// Then context scope
-	v8::Context::Scope contextScope(scriptingEnvironment->GetContext());
-	// And invoke ourselves
-	v8::Handle<v8::Object> self = v8::Local<v8::Object>::New(isolate, instance);
-	v8::Handle<v8::Value> jsGetFrame = self->Get(v8::String::New("getFrame"));
-	// Start a try/catch block
-	v8::TryCatch try_catch;
-	// Compile the script
+	v8::Isolate* isolate = scriptingEnvironment->EnterIsolate();
+	// The video frame that is our result will be needed later...
 	PVideoFrame result;
-	// FIXME: Any sort of error handling
-	if (jsGetFrame->IsFunction()) {
-		// Invoke with the current frame number
-		v8::Handle<v8::Function> f = v8::Handle<v8::Function>::Cast(jsGetFrame);
-		v8::Handle<v8::Value> argv[] = { v8::Int32::New(n) };
-		v8::Handle<v8::Value> jsResult = f->CallAsFunction(self, 1, argv);
-		if (jsResult.IsEmpty()) {
-			// FIXME: Handle this
-			JSV_ERROR("Script threw an error\n");
-		} else {
-			if (jsResult->IsObject() && JSVideoFrame::IsWrappedVideoFrame(jsResult->ToObject())) {
-				JSVideoFrame* jsFrame = JSVideoFrame::UnwrapVideoFrame(jsResult->ToObject());
-				result = jsFrame->GetVideoFrame();
-				jsFrame->Release();
-			} else {
-				v8::String::AsciiValue asciiResult(jsResult);
-				JSV_ERROR("getFrame returned %s instead of a frame!\n", asciiResult);
+	{
+		// Now that we've entered the isolate, we need to create a new block
+		// so that the various scopes we enter will clear BEFORE we exit the
+		// isolate and return control back to AviSynth
+		v8::HandleScope handleScope(isolate);
+		// Then context scope
+		v8::Context::Scope contextScope(scriptingEnvironment->GetContext());
+		// And invoke ourselves
+		v8::Handle<v8::Object> self = v8::Local<v8::Object>::New(isolate, instance);
+		v8::Handle<v8::Value> jsGetFrame = self->Get(v8::String::New("getFrame"));
+		// Start a try/catch block
+		v8::TryCatch try_catch;
+		// Compile the script
+		// FIXME: Any sort of error handling
+		if (jsGetFrame->IsFunction()) {
+			// Invoke with the current frame number
+			v8::Handle<v8::Function> f = v8::Handle<v8::Function>::Cast(jsGetFrame);
+			v8::Handle<v8::Value> argv[] = { v8::Int32::New(n) };
+			v8::Handle<v8::Value> jsResult = f->CallAsFunction(self, 1, argv);
+			if (jsResult.IsEmpty()) {
 				// FIXME: Handle this
+				JSV_ERROR("Script threw an error\n");
+			} else {
+				if (jsResult->IsObject() && JSVideoFrame::IsWrappedVideoFrame(jsResult->ToObject())) {
+					JSVideoFrame* jsFrame = JSVideoFrame::UnwrapVideoFrame(jsResult->ToObject());
+					result = jsFrame->GetVideoFrame();
+					jsFrame->Release();
+				} else {
+					v8::String::AsciiValue asciiResult(jsResult);
+					JSV_ERROR("getFrame returned %s instead of a frame!\n", asciiResult);
+					// FIXME: Handle this
+				}
 			}
+		} else {
+			JSV_ERROR("getFrame isn't a function!\n");
+			// FIXME: Handle this
 		}
-	} else {
-		JSV_ERROR("getFrame isn't a function!\n");
-		// FIXME: Handle this
 	}
 	scriptingEnvironment->ExitIsolate();
 	return result;

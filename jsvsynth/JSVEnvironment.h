@@ -37,7 +37,10 @@ public:
 	AVSValue ImportScript(const char* filename);
 	IScriptEnvironment* GetAVSScriptEnvironment() { return avisynthEnv; }
 	v8::Isolate* GetIsolate() { return isolate; }
-	void EnterIsolate() { isolate->Enter(); }
+	/**
+	 * Enters the isolate and returns it.
+	 */
+	v8::Isolate* EnterIsolate() { isolate->Enter(); return isolate; }
 	void ExitIsolate() { isolate->Exit(); }
 	v8::Handle<v8::Context> GetContext() { return v8::Local<v8::Context>::New(isolate, scriptingContext); }
 	/**
