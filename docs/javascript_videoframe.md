@@ -23,7 +23,10 @@ depend on which on is being used.
 
 If `interleaved` is `true`, (which it will be for RGB and YUY2) then you have:
 
-* `data` - a `Uint8Array` that allows access to the frame data
+* `dataBuffer` - an `ArrayBuffer` that allows access to the frame data
+* `data` - a `Uint8Array` that allows access to the frame data (a view into the
+  above `dataBuffer` value (TODO: will this remain? I may make you create your
+  own view.)
 * `pitch` - the "pitch" (see "accessing a pixel")
 * `rowSize` - the "row size" in bytes (see "accessing a pixel")
 * `height` - the height, which is simply the height of the frame
@@ -37,13 +40,17 @@ Otherwise, if `planar` is `true`, those fields are instead available inside:
 * `u` - the U plane (green/blue)
 * `v` - the V plane (red/green)
 
-A `Uint8Array` is a new(ish) JavaScript feature that V8 supports. Since Google
-doesn't have JavaScript documentation, check out [the Mozilla JavaScript
-documentation of
-Uint8Array](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Typed_arrays/Uint8Array).
+`ArrayBuffer` and `Uint8Array` are both part of a new JavaScript feature that V8
+supports called [JavaScript typed arrays](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Typed_arrays).
+Essentially the `ArrayBuffer` provides an object that represents the data to
+JavaScript, while the various <code><var>Type</var>Array</code> objects provide
+access to the data. (Yes, that link is to the Mozilla documentation. Chrome
+doesn't provide documentation directly. However the Mozilla documentation covers
+the standard and, as long as you avoid the Mozilla-specific features, covers the
+API available through JSVSynth.)
 
 Basically, though, you can just access the array data exactly like you would any
-other array, except the array can only contain unsigned 8-bit integers. This
+other array, except the array can only contain 8-bit unsigned integers. This
 is the "standard" version, meaning that only the low 8-bits are used. (Which
 isn't the way the HTML5 Canvas `ImageData` API works - that "clamps" values to
 0-255, so a value less than 0 becomes 0 and a value higher than 255 becomes
@@ -54,19 +61,28 @@ In AviSynth, if you have a planar data source, it will be either YV12 or I420
 means that `bitPerPixel` will be 12 and `bytesPerPixel` will be an inaccurate
 1.
 
-**NOTE:** Accessing the `data` element at all will force JSVSynth to make the
-frame "writeable" which will effectively create an extra copy of the frame.
-There is currently no way to get read-only access to a frame.
+**NOTE:** Accessing the `data` or `dataBuffer` elements at all will force
+JSVSynth to make the frame "writeable" which will effectively create an extra
+copy of the frame. There is currently no way to get read-only access to a frame.
 
 Functions
 ---------
-
-There's only one function available for a VideoFrame:
 
 * `release()` - release the frame data, preventing future access to the frame.
   After this is called, the length of the data arrays becomes 0 and you will no
   longer be able to access the frame data. **Do not `release()` a frame you're
   returning from `AviSynth.Filter.getFrame()`!**
+* `getContext(type)` - based on the [HTML 5 canvas
+  API](http://www.whatwg.org/specs/web-apps/current-work/multipage/the-canvas-element.html),
+  this provides access to a context that allows drawing on the frame directly.
+  At some point you'll be able to do `getContext("2d")` and get something
+  similar to a full-fledged
+  [`CanvasRenderingContext2D`](http://www.whatwg.org/specs/web-apps/current-work/multipage/the-canvas-element.html#canvasrenderingcontext2d).
+  But for now, you're stuck with `getContext("simple")`. **Note:** Currently,
+  rendering contexts are limited to RGB32 clips. This *may* change in the
+  future for `getContext("simple")` but will likely never change for
+  `getContext("2d")`.
+* `getPixel(x, y)` [EXPERIMENTAL] - get a pixel
 
 Accessing a Pixel
 -----------------

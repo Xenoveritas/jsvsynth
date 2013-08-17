@@ -1,6 +1,7 @@
 @ECHO OFF
 
 REM This script attempts to download the various required third party utilities.
+REM FIXME: This script should also update the third party stuff when re-run
 
 svn --version >NUL 2>NUL
 IF ERRORLEVEL 1 GOTO noSVN

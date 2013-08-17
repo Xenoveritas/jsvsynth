@@ -1,6 +1,9 @@
 # Generic ignores
 *~
 
+# Ignore build directory
+/build
+
 # Don't include any of v8
 /v8
 
