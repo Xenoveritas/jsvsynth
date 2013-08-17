@@ -26,7 +26,7 @@ JSFilter::JSFilter(v8::Handle<v8::Object> self, v8::Handle<v8::Object> jsChild) 
 	v8::Handle<v8::String> key = v8::String::New("child");
 	if (!child) {
 		// TODO: Handle properly
-		TRACE("Child not available, things will not work!\n");
+		JSV_ERROR("Child not available, things will not work!");
 	} else {
 		vi = child->GetVideoInfo();
 	}
@@ -58,7 +58,6 @@ void JSFilter::FilterConstructor(const v8::FunctionCallbackInfo<v8::Value>& info
 	TRACE("Create JSFilter\n");
 	v8::HandleScope scope(info.GetIsolate());
 	v8::Handle<v8::Object> self = info.This();
-	TRACE("%s", self.IsEmpty() ? "self is empty\n" : "Have reference to this\n");
 	if (info.Length() < 1) {
 		TRACE("No arguments.\n");
 		v8::ThrowException(v8::Exception::ReferenceError(v8::String::New("Missing arguments")));
@@ -99,7 +98,9 @@ PVideoFrame __stdcall JSFilter::GetFrame(int n, IScriptEnvironment* env) {
 			JSV_ERROR("Script threw an error\n");
 		} else {
 			if (jsResult->IsObject() && JSVideoFrame::IsWrappedVideoFrame(jsResult->ToObject())) {
-				result = JSVideoFrame::UnwrapVideoFrame(jsResult->ToObject());
+				JSVideoFrame* jsFrame = JSVideoFrame::UnwrapVideoFrame(jsResult->ToObject());
+				result = jsFrame->GetVideoFrame();
+				jsFrame->Release();
 			} else {
 				v8::String::AsciiValue asciiResult(jsResult);
 				JSV_ERROR("getFrame returned %s instead of a frame!\n", asciiResult);

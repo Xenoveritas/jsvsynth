@@ -8,7 +8,7 @@ ECHO Test %1>>%TEST_LOG%
 ECHO ----------->>%TEST_LOG%
 ECHO.>> %TEST_LOG%
 
-"%VDUB_HOME%\VDub.exe" %1 >>%TEST_LOG%
+"%VDUB_HOME%\VDub.exe" %1 2>>%TEST_LOG%
 
 SET TEST_EL=%ERRORLEVEL%
 

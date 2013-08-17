@@ -138,7 +138,7 @@ function runJSDoc(next) {
 	var jsdoc_command = 'jsdoc';
 	var jsdoc_args = [ ];
 	if (os.type() == 'Windows_NT') {
-		// Because the JSDoc wrapper is a BAT file and BAT files are "special"
+		// Because the JSDoc wrapper is a CMD file and CMD files are "special"
 		// under Windows and not "normal processes", we have to instead invoke
 		// CMD to run it.
 		jsdoc_command = 'CMD';

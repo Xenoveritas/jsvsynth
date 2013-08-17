@@ -45,6 +45,9 @@ AVSValue __cdecl JS_Script(AVSValue args, void* user_data, IScriptEnvironment* e
 AVSValue __cdecl JS_Import(AVSValue args, void* user_data, IScriptEnvironment* env) {
 	TRACE("Import JavaScript %s\n", args[0].AsString());
 	// FIXME: There's also an "encoding" argument that isn't used at present
+	// FIXME: This should do something to make sure we use the current AviSynth
+	// "working directory" which we apparently can't do because that
+	// information is simply never exposed.
 	jsv::JSVEnvironment* jsvEnv = (jsv::JSVEnvironment*) user_data;
 	jsvEnv->EnterIsolate();
 	AVSValue result = jsvEnv->ImportScript(args[0].AsString());
@@ -56,11 +59,13 @@ void InitV8() {
 	TRACE("Initializing V8 settings...\n");
 	v8::V8::InitializeICU();
 	// Pretend we're a command line program and set some crap for V8
-	// TODO (maybe): Somehow allow this to be set whent he pll
+	// TODO (maybe): Somehow allow this to be set from AviSynth
 	int fake_argc = 2;
 	char **fake_argv = new char*[3];
 	fake_argv[0] = NULL;
 	// We need to enable the typed arrays feature for our internal system
+	// FIXME: This is taken from d8.cc, but why are we strdup-ing the arguments
+	// we're sending to V8?
 	fake_argv[1] = _strdup("--harmony-typed-arrays");
 	v8::V8::SetFlagsFromCommandLine(&fake_argc, fake_argv, false);
 	free(fake_argv[1]);

@@ -1,0 +1,63 @@
+#include <windows.h>
+
+#define VER_FILEVERSION             0,0,1,0
+#ifdef _DEBUG
+# define VER_FILEVERSION_STR         "0.0.1-debug\0"
+#else
+# define VER_FILEVERSION_STR         "0.0.1\0"
+#endif
+
+/* Is the same */
+#define VER_PRODUCTVERSION          VER_FILEVERSION
+#define VER_PRODUCTVERSION_STR      VER_FILEVERSION_STR
+
+/* Most builds are private builds */
+#define VER_PRIVATEBUILD            VS_FF_PRIVATEBUILD
+
+/* Currently a prerelease */
+#define VER_PRERELEASE              VS_FF_PRERELEASE
+
+#ifndef _DEBUG
+#define VER_DEBUG                   0
+#else
+#define VER_DEBUG                   VS_FF_DEBUG
+#endif
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION    	VER_FILEVERSION
+PRODUCTVERSION 	VER_PRODUCTVERSION
+FILEFLAGSMASK  	VS_FFI_FILEFLAGSMASK
+FILEFLAGS      	(VER_PRIVATEBUILD|VER_PRERELEASE|VER_DEBUG)
+FILEOS         	VOS_NT_WINDOWS32
+FILETYPE       	VFT_DLL
+FILESUBTYPE    	VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904E4"
+        BEGIN
+            VALUE "CompanyName",      "Xenoveritas"
+            VALUE "FileDescription",  "JSVSynth AviSynth Plugin"
+            VALUE "FileVersion",      VER_FILEVERSION_STR
+            VALUE "InternalName",     "jsvsynth"
+            VALUE "LegalCopyright",   "Copyright 2013 Xenoveritas"
+            VALUE "OriginalFilename", "jsvsynth.dll"
+            VALUE "ProductName",      "JSVSynth"
+            VALUE "ProductVersion",   VER_PRODUCTVERSION_STR
+            VALUE "PrivateBuild",     "Built from GitHub source"
+        END
+    END
+
+    BLOCK "VarFileInfo"
+    BEGIN
+        /* The following line should only be modified for localized versions.     */
+        /* It consists of any number of WORD,WORD pairs, with each pair           */
+        /* describing a language,codepage combination supported by the file.      */
+        /*                                                                        */
+        /* For example, a file might have values "0x409,1252" indicating that it  */
+        /* supports English language (0x409) in the Windows ANSI codepage (1252). */
+
+        VALUE "Translation", 0x409, 1252
+
+    END
+END

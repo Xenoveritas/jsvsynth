@@ -132,6 +132,7 @@ void JSVEnvironment::CreateGlobals(v8::Handle<v8::Object> global) {
 	v8::Handle<v8::External> wrapped = v8::External::New(this);
 	// Our first step is to create the template. We don't need to hang onto it
 	// because there's only ever the single object.
+	// FIXME: Because there's only one, I suspect we don't even need the template
 	v8::Handle<v8::ObjectTemplate> avisynthTemplate = v8::ObjectTemplate::New();
 	// Classes inside our "namespace"
 	avisynthTemplate->Set(v8::String::New("Filter"), JSFilter::CreateFilterConstructor(isolate));
@@ -161,6 +162,9 @@ void JSVEnvironment::CreateGlobals(v8::Handle<v8::Object> global) {
 	v8::Handle<v8::Object>::Cast(avisynth->Get(v8::String::New("functions")))->SetInternalField(0, wrapped);
 	v8::Handle<v8::Object>::Cast(avisynth->Get(v8::String::New("variables")))->SetInternalField(0, wrapped);
 	global->Set(v8::String::New("AviSynth"), avisynth);
+	v8::Handle<v8::Object> jsvsynth = v8::Object::New();
+	jsvsynth->Set(v8::String::New("version"), v8::String::New(JSVSYNTH_VERSION_STRING), v8::PropertyAttribute::ReadOnly);
+	global->Set(v8::String::New("JSVSynth"), jsvsynth);
 	v8::Handle<v8::ObjectTemplate> avsTemplate = v8::ObjectTemplate::New();
 	// The object does have an internal field, a reference to this class.
 	avsTemplate->SetInternalFieldCount(1);

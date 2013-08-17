@@ -59,12 +59,11 @@ bool JSVideoFrame::IsWrappedVideoFrame(v8::Handle<v8::Object> obj) {
 	return (!value.IsEmpty()) && value->IsBoolean() && value->IsTrue();
 }
 
-PVideoFrame JSVideoFrame::UnwrapVideoFrame(v8::Handle<v8::Object> obj) {
+JSVideoFrame* JSVideoFrame::UnwrapVideoFrame(v8::Handle<v8::Object> obj) {
 	v8::HandleScope scope(v8::Isolate::GetCurrent());
 	v8::Handle<v8::Value> value = obj->GetHiddenValue(v8::String::New(JSVIDEOFRAME_HIDDEN_PROP));
 	if ((!value.IsEmpty()) && value->IsBoolean() && value->IsTrue()) {
-		JSVideoFrame* frame = UnwrapSelf<JSVideoFrame>(obj);
-		return frame->GetVideoFrame();
+		return UnwrapSelf<JSVideoFrame>(obj);
 	} else {
 		return NULL;
 	}	
@@ -96,7 +95,6 @@ JSInterleavedVideoFrame::JSInterleavedVideoFrame(PVideoFrame aFrame, const Video
 }
 
 JSInterleavedVideoFrame::~JSInterleavedVideoFrame() {
-	dataBufferInstance.Dispose();
 	dataInstance.Dispose();
 }
 
@@ -105,7 +103,7 @@ void JSInterleavedVideoFrame::Release() {
 	v8::Isolate* isolate = v8::Isolate::GetCurrent();
 	v8::HandleScope scope(isolate);
 	if (!dataInstance.IsEmpty()) {
-		v8::Local<v8::ArrayBuffer>::New(isolate, dataBufferInstance)->Neuter();
+		v8::Local<v8::ArrayBuffer>::New(isolate, dataInstance)->Neuter();
 	}
 }
 
@@ -124,19 +122,21 @@ void JSInterleavedVideoFrame::JSRelease(const v8::FunctionCallbackInfo<v8::Value
 }
 
 void JSInterleavedVideoFrame::JSGetData(v8::Local<v8::String>, const v8::PropertyCallbackInfo<v8::Value>& info) {
-	v8::HandleScope scope(info.GetIsolate());
+	v8::Isolate* isolate = info.GetIsolate();
+	v8::HandleScope scope(isolate);
 	JSInterleavedVideoFrame* self = UnwrapSelf<JSInterleavedVideoFrame>(info.This());
-	v8::Handle<v8::Uint8Array> result = self->GetData(info.GetIsolate());
-	if (result.IsEmpty()) {
+	// Make sure we're writeable.
+	self->MakeWriteable(isolate);
+	if (self->dataInstance.IsEmpty()) {
 		info.GetReturnValue().Set(v8::Null());
 	} else {
-		info.GetReturnValue().Set(result);
+		info.GetReturnValue().Set(self->dataInstance);
 	}
 }
 
-v8::Handle<v8::Uint8Array> JSInterleavedVideoFrame::GetData(v8::Isolate* isolate) {
+void JSInterleavedVideoFrame::MakeWriteable(v8::Isolate* isolate) {
 	if (released) {
-		return v8::Handle<v8::Uint8Array>();
+		return;
 	}
 	if (dataInstance.IsEmpty()) {
 		TRACE("Data instance is emtpy, building data\n");
@@ -154,20 +154,12 @@ v8::Handle<v8::Uint8Array> JSInterleavedVideoFrame::GetData(v8::Isolate* isolate
 		if (dataptr == NULL) {
 			JSV_ERROR("Write pointer is null!");
 			// Return an empty handle
-			return v8::Handle<v8::Uint8Array>();
+			return;
 		}
-		v8::Handle<v8::ArrayBuffer> dataBuffer = WrapData(isolate, dataptr, frame->GetPitch() * frame->GetHeight());
-		// And create the views
-		v8::Handle<v8::Uint8Array> data = v8::Uint8Array::New(dataBuffer, 0, dataBuffer->ByteLength());
-		// And finally, persist them:
-		dataBufferInstance.Reset(isolate, dataBuffer);
+		// Create and persist the array buffer
+		v8::Handle<v8::ArrayBuffer> data = WrapData(isolate, dataptr, frame->GetPitch() * frame->GetHeight());
 		dataInstance.Reset(isolate, data);
-		// And, since we still have this lovely scope here, do the return here rather than fall through
-		return scope.Close(data);
 	}
-	TRACE("Returning cached version\n");
-	// If we're here, we can use a cached version.
-	return v8::Local<v8::Uint8Array>::New(isolate, dataInstance);
 }
 
 v8::Handle<v8::ObjectTemplate> JSInterleavedVideoFrame::CreateTemplate(v8::Isolate* isolate) {
@@ -188,9 +180,6 @@ JSPlanarVideoFrame::JSPlanarVideoFrame(PVideoFrame aFrame, const VideoInfo& vi, 
 }
 
 JSPlanarVideoFrame::~JSPlanarVideoFrame() {
-	dataYBufferInstance.Dispose();
-	dataUBufferInstance.Dispose();
-	dataVBufferInstance.Dispose();
 	dataYInstance.Dispose();
 	dataUInstance.Dispose();
 	dataVInstance.Dispose();
@@ -218,9 +207,9 @@ void JSPlanarVideoFrame::Release() {
 	v8::Isolate* isolate = v8::Isolate::GetCurrent();
 	v8::HandleScope scope(isolate);
 	if (!dataYInstance.IsEmpty()) {
-		v8::Local<v8::ArrayBuffer>::New(isolate, dataYBufferInstance)->Neuter();
-		v8::Local<v8::ArrayBuffer>::New(isolate, dataUBufferInstance)->Neuter();
-		v8::Local<v8::ArrayBuffer>::New(isolate, dataVBufferInstance)->Neuter();
+		v8::Local<v8::ArrayBuffer>::New(isolate, dataYInstance)->Neuter();
+		v8::Local<v8::ArrayBuffer>::New(isolate, dataUInstance)->Neuter();
+		v8::Local<v8::ArrayBuffer>::New(isolate, dataVInstance)->Neuter();
 	}
 }
 
@@ -230,13 +219,14 @@ void JSPlanarVideoFrame::JSRelease(const v8::FunctionCallbackInfo<v8::Value>& in
 }
 
 #define PLANAR_JS_GET_DATA(PLANE)		void JSPlanarVideoFrame::JSGetData ## PLANE (v8::Local<v8::String>, const v8::PropertyCallbackInfo<v8::Value>& info) { \
+	v8::Isolate* isolate = info.GetIsolate(); \
 	JSPlanarVideoFrame* self = UnwrapSelf<JSPlanarVideoFrame>(info.This()); \
-	v8::HandleScope scope(info.GetIsolate()); \
-	v8::Handle<v8::Uint8Array> result = self->GetData(info.GetIsolate(), PLANAR_ ## PLANE); \
-	if (result.IsEmpty()) { \
+	v8::HandleScope scope(isolate); \
+	self->MakeWriteable(info.GetIsolate()); \
+	if (self->data ## PLANE ## Instance.IsEmpty()) { \
 		info.GetReturnValue().Set(v8::Null()); \
 	} else { \
-		info.GetReturnValue().Set(result); \
+		info.GetReturnValue().Set(self->data ## PLANE ## Instance); \
 	} \
 }
 
@@ -244,9 +234,9 @@ PLANAR_JS_GET_DATA(Y)
 PLANAR_JS_GET_DATA(U)
 PLANAR_JS_GET_DATA(V)
 
-v8::Handle<v8::Uint8Array> JSPlanarVideoFrame::GetData(v8::Isolate* isolate, int plane) {
+void JSPlanarVideoFrame::MakeWriteable(v8::Isolate* isolate) {
 	if (released) {
-		return v8::Handle<v8::Uint8Array>();
+		return;
 	}
 	if (dataYInstance.IsEmpty()) {
 		v8::HandleScope scope(isolate);
@@ -259,47 +249,13 @@ v8::Handle<v8::Uint8Array> JSPlanarVideoFrame::GetData(v8::Isolate* isolate, int
 		// the pointer to the Y plane *FIRST* and then the U and V planes.
 		// Rather than force that down to the JavaScript level, we just create
 		// wrappers for the three planes all at once.
-		v8::Handle<v8::ArrayBuffer> dataYBuffer = WrapData(isolate, frame->GetWritePtr(PLANAR_Y), frame->GetRowSize(PLANAR_Y) * frame->GetHeight(PLANAR_Y));
-		v8::Handle<v8::ArrayBuffer> dataUBuffer = WrapData(isolate, frame->GetWritePtr(PLANAR_U), frame->GetRowSize(PLANAR_U) * frame->GetHeight(PLANAR_U));
-		v8::Handle<v8::ArrayBuffer> dataVBuffer = WrapData(isolate, frame->GetWritePtr(PLANAR_V), frame->GetRowSize(PLANAR_V) * frame->GetHeight(PLANAR_V));
-		// And create the views...
-		v8::Handle<v8::Uint8Array> dataY = v8::Uint8Array::New(dataYBuffer, 0, dataYBuffer->ByteLength());
-		v8::Handle<v8::Uint8Array> dataU = v8::Uint8Array::New(dataUBuffer, 0, dataUBuffer->ByteLength());
-		v8::Handle<v8::Uint8Array> dataV = v8::Uint8Array::New(dataVBuffer, 0, dataVBuffer->ByteLength());
+		v8::Handle<v8::ArrayBuffer> dataY = WrapData(isolate, frame->GetWritePtr(PLANAR_Y), frame->GetRowSize(PLANAR_Y) * frame->GetHeight(PLANAR_Y));
+		v8::Handle<v8::ArrayBuffer> dataU = WrapData(isolate, frame->GetWritePtr(PLANAR_U), frame->GetRowSize(PLANAR_U) * frame->GetHeight(PLANAR_U));
+		v8::Handle<v8::ArrayBuffer> dataV = WrapData(isolate, frame->GetWritePtr(PLANAR_V), frame->GetRowSize(PLANAR_V) * frame->GetHeight(PLANAR_V));
 		// And finally, persist everything:
-		dataYBufferInstance.Reset(isolate, dataYBuffer);
-		dataUBufferInstance.Reset(isolate, dataUBuffer);
-		dataVBufferInstance.Reset(isolate, dataVBuffer);
 		dataYInstance.Reset(isolate, dataY);
 		dataUInstance.Reset(isolate, dataU);
 		dataVInstance.Reset(isolate, dataV);
-		// And, since we still have this lovely scope here, do the return here rather than fall through
-		v8::Handle<v8::Uint8Array> result;
-		switch (plane) {
-		case PLANAR_Y:
-			result = dataY;
-			break;
-		case PLANAR_U:
-			result = dataU;
-			break;
-		case PLANAR_V:
-			result = dataV;
-			break;
-		default:
-			result = v8::Local<v8::Uint8Array>();
-		}
-		return scope.Close(result);
-	}
-	// If we're here, we can use a cached version.
-	switch (plane) {
-	case PLANAR_Y:
-		return v8::Local<v8::Uint8Array>::New(isolate, dataYInstance);
-	case PLANAR_U:
-		return v8::Local<v8::Uint8Array>::New(isolate, dataUInstance);
-	case PLANAR_V:
-		return v8::Local<v8::Uint8Array>::New(isolate, dataVInstance);
-	default:
-		return v8::Local<v8::Uint8Array>();
 	}
 }
 

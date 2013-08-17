@@ -11,6 +11,8 @@
 // Windows Header Files:
 #include <windows.h>
 
+#include "JSVSynth.h"
+
 // Include debug stuff
 #include "debug.h"
 

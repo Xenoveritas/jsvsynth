@@ -385,14 +385,9 @@ AviSynth.VideoFrameData = function() { };
 
 AviSynth.VideoFrameData.prototype = {
 	/**
-	 * The frame data itself.
+	 * The data buffer. You'll want to wrap this with one of the more specific
+	 * typed-array views.
 	 * @type {ArrayBuffer}
-	 * @readonly
-	 */
-	dataBuffer: null,
-	/**
-	 * A view into the frame buffer. (NOTE: May be removed in a future version.)
-	 * @type {Uint8Array}
 	 * @readonly
 	 */
 	data: null,
@@ -427,7 +422,13 @@ AviSynth.VideoFrameData.prototype = {
 	 * @type {number}
 	 * @readonly
 	 */
-	bytesPerPixel: 0
+	bytesPerPixel: 0//,
+	/* *
+	 * Get a single pixel value. (This is difficult due to chroma subsampling
+	 * and will be wonky under YUV frames.)
+	 * @future
+	 * /
+	getPixel: function(x, y) { }*/
 };
 
 /**

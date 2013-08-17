@@ -23,10 +23,8 @@ depend on which on is being used.
 
 If `interleaved` is `true`, (which it will be for RGB and YUY2) then you have:
 
-* `dataBuffer` - an `ArrayBuffer` that allows access to the frame data
-* `data` - a `Uint8Array` that allows access to the frame data (a view into the
-  above `dataBuffer` value (TODO: will this remain? I may make you create your
-  own view.)
+* `data` - a `ArrayBuffer` that allows access to the frame data - to actually
+  use this, you'll need to create a typed array view into it
 * `pitch` - the "pitch" (see "accessing a pixel")
 * `rowSize` - the "row size" in bytes (see "accessing a pixel")
 * `height` - the height, which is simply the height of the frame
@@ -40,28 +38,28 @@ Otherwise, if `planar` is `true`, those fields are instead available inside:
 * `u` - the U plane (green/blue)
 * `v` - the V plane (red/green)
 
-`ArrayBuffer` and `Uint8Array` are both part of a new JavaScript feature that V8
-supports called [JavaScript typed arrays](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Typed_arrays).
+`ArrayBuffer`  is part of a new JavaScript feature that V8 supports called
+[JavaScript typed arrays](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Typed_arrays).
 Essentially the `ArrayBuffer` provides an object that represents the data to
-JavaScript, while the various <code><var>Type</var>Array</code> objects provide
+JavaScript, while various <code><var>Type</var>Array</code> objects provide
 access to the data. (Yes, that link is to the Mozilla documentation. Chrome
 doesn't provide documentation directly. However the Mozilla documentation covers
 the standard and, as long as you avoid the Mozilla-specific features, covers the
 API available through JSVSynth.)
 
-Basically, though, you can just access the array data exactly like you would any
-other array, except the array can only contain 8-bit unsigned integers. This
-is the "standard" version, meaning that only the low 8-bits are used. (Which
-isn't the way the HTML5 Canvas `ImageData` API works - that "clamps" values to
-0-255, so a value less than 0 becomes 0 and a value higher than 255 becomes
-255.)
+This means that in order to access the pixel data, you need to write it with
+an array view. The simplest one is `Uint8Array` which provides byte access to
+the pixel data.
+
+However, for RGB32 data, you might find it easier to use `Uint32Array` which
+provides you with access to the entire pixels at a time.
 
 In AviSynth, if you have a planar data source, it will be either YV12 or I420
 (the difference of which is basically incidental but detectable anyway). This
 means that `bitPerPixel` will be 12 and `bytesPerPixel` will be an inaccurate
 1.
 
-**NOTE:** Accessing the `data` or `dataBuffer` elements at all will force
+**NOTE:** Accessing the `data` element at all will force
 JSVSynth to make the frame "writeable" which will effectively create an extra
 copy of the frame. There is currently no way to get read-only access to a frame.
 

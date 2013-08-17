@@ -30,7 +30,7 @@ public:
 	virtual void Release();
 	PVideoFrame GetVideoFrame() { return frame; }
 	static bool IsWrappedVideoFrame(v8::Handle<v8::Object> obj);
-	static PVideoFrame UnwrapVideoFrame(v8::Handle<v8::Object> obj);
+	static JSVideoFrame* UnwrapVideoFrame(v8::Handle<v8::Object> obj);
 protected:
 	v8::Handle<v8::ArrayBuffer> WrapData(v8::Isolate* isolate, BYTE* data, int length);
 	v8::Persistent<v8::Object> instance;
@@ -51,13 +51,15 @@ public:
 	~JSInterleavedVideoFrame();
 	virtual void Release();
 	static v8::Handle<v8::ObjectTemplate> CreateTemplate(v8::Isolate* isolate);
-	v8::Handle<v8::Uint8Array> GetData(v8::Isolate* isolate);
 private:
 	void PopulateInstance(v8::Handle<v8::Object> inst);
+	/**
+	 * Populate the internal data fields.
+	 */
+	void MakeWriteable(v8::Isolate* isolate);
 	static void JSRelease(const v8::FunctionCallbackInfo<v8::Value>&);
 	static void JSGetData(v8::Local<v8::String>, const v8::PropertyCallbackInfo<v8::Value>&);
-	v8::Persistent<v8::ArrayBuffer> dataBufferInstance;
-	v8::Persistent<v8::Uint8Array> dataInstance;
+	v8::Persistent<v8::ArrayBuffer> dataInstance;
 };
 
 /**
@@ -69,20 +71,17 @@ public:
 	~JSPlanarVideoFrame();
 	virtual void Release();
 	static v8::Handle<v8::ObjectTemplate> CreateTemplate(v8::Isolate* isolate);
-	v8::Handle<v8::Uint8Array> GetData(v8::Isolate* isolate, int plane);
 private:
 	void PopulateInstance(v8::Handle<v8::Object> inst);
 	void PopulatePlaneInstance(v8::Handle<v8::Object> inst, int plane);
+	void MakeWriteable(v8::Isolate* isolate);
 	static void JSRelease(const v8::FunctionCallbackInfo<v8::Value>&);
 	static void JSGetDataY(v8::Local<v8::String>, const v8::PropertyCallbackInfo<v8::Value>&);
 	static void JSGetDataU(v8::Local<v8::String>, const v8::PropertyCallbackInfo<v8::Value>&);
 	static void JSGetDataV(v8::Local<v8::String>, const v8::PropertyCallbackInfo<v8::Value>&);
-	v8::Persistent<v8::ArrayBuffer> dataYBufferInstance;
-	v8::Persistent<v8::ArrayBuffer> dataUBufferInstance;
-	v8::Persistent<v8::ArrayBuffer> dataVBufferInstance;
-	v8::Persistent<v8::Uint8Array> dataYInstance;
-	v8::Persistent<v8::Uint8Array> dataUInstance;
-	v8::Persistent<v8::Uint8Array> dataVInstance;
+	v8::Persistent<v8::ArrayBuffer> dataYInstance;
+	v8::Persistent<v8::ArrayBuffer> dataUInstance;
+	v8::Persistent<v8::ArrayBuffer> dataVInstance;
 };
 
 };
