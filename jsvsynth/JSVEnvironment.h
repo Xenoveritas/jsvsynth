@@ -41,7 +41,15 @@ public:
 	 * Enters the isolate and returns it.
 	 */
 	v8::Isolate* EnterIsolate() { isolate->Enter(); return isolate; }
+	/**
+	 * Exit the isolate. NOTE: After this has been called, you MUST NOT invoke
+	 * any V8 functions that require you be inside the isolate (which is the
+	 * vast majority of them)!
+	 */
 	void ExitIsolate() { isolate->Exit(); }
+	/**
+	 * Get the current V8 context.
+	 */
 	v8::Handle<v8::Context> GetContext() { return v8::Local<v8::Context>::New(isolate, scriptingContext); }
 	/**
 	 * Convert a value from AviSynth into a V8 value. A handle scope must already exist.
@@ -68,6 +76,8 @@ public:
 	 * v8::Isolate.
 	 */
 	static JSVEnvironment* GetCurrent() { return static_cast<JSVEnvironment*>(v8::Isolate::GetCurrent()->GetData()); }
+	static JSVEnvironment* GetCurrent(v8::Isolate* isolate) { return static_cast<JSVEnvironment*>(isolate->GetData()); }
+	v8::Handle<v8::Object> NewSimpleContext();
 private:
 	JSFunction* WrapFunction(v8::Handle<v8::Function> func);
 	v8::Handle<v8::Context> CreateContext(v8::Isolate* isolate);
@@ -82,6 +92,7 @@ private:
 	v8::Persistent<v8::ObjectTemplate> avsFuncWrapperTemplate;
 	v8::Persistent<v8::ObjectTemplate> interleavedVideoFrameTemplate;
 	v8::Persistent<v8::ObjectTemplate> planarVideoFrameTemplate;
+	v8::Persistent<v8::ObjectTemplate> simpleContextTemplate;
 	/**
 	 * A list of allocated memory that we can't delete until AviSynth closes.
 	 * At present this is exclusively wrapped JavaScript functions.

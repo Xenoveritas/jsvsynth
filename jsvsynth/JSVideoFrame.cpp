@@ -17,6 +17,7 @@
 #include "stdafx.h"
 #include "JSVideoFrame.h"
 #include "JSVEnvironment.h"
+#include "JSSimpleRenderingContext.h"
 
 #include <iostream>
 
@@ -75,6 +76,41 @@ void JSVideoFrame::Release() {
 		released = true;
 	}
 }
+void JSVideoFrame::CreateTemplateDefaultFields(v8::Handle<v8::ObjectTemplate> templ) {
+	templ->Set(JSPROP_NAME("getContext"), v8::FunctionTemplate::New(JSGetContext), JSPROP_READONLY);
+	templ->Set(JSPROP_NAME("getSimpleContext"), v8::FunctionTemplate::New(JSGetSimpleContext), JSPROP_READONLY);
+}
+
+void JSVideoFrame::JSGetContext(const v8::FunctionCallbackInfo<v8::Value>& args) {
+	// Before doing anything, parse the type.
+	v8::HandleScope scope(args.GetIsolate());
+	if (args.Length() < 1) {
+		v8::ThrowException(v8::Exception::Error(v8::String::New("Missing type for getContext")));
+		return;
+	}
+	v8::String::AsciiValue type(args[0]->ToString());
+	TRACE("Get context [%s]\n", *type);
+	if (strcmp("simple", *type) == 0) {
+		// Simple context
+		JSGetSimpleContext(args);
+	} else {
+		// Unknown, return null
+		args.GetReturnValue().SetNull();
+	}
+}
+
+void JSVideoFrame::JSGetSimpleContext(const v8::FunctionCallbackInfo<v8::Value>& args) {
+	v8::HandleScope scope(args.GetIsolate());
+	// Ignore the arguments (as we're currently called directly from GetContext)
+	JSVideoFrame* self = UnwrapSelf<JSVideoFrame>(args.This());
+	JSSimpleRenderingContext* renderingContext = self->GetSimpleContext();
+	if (renderingContext == NULL) {
+		args.GetReturnValue().SetNull();
+	} else {
+		v8::Handle<v8::Object> inst = renderingContext->GetInstance(args.GetIsolate());
+		args.GetReturnValue().Set(inst);
+	}
+}
 
 v8::Handle<v8::ArrayBuffer> JSVideoFrame::WrapData(v8::Isolate* isolate, BYTE* data, int length) {
 	TRACE("Wrapping frame data at %p (%d bytes)\n", data, length);
@@ -85,47 +121,66 @@ v8::Handle<v8::ArrayBuffer> JSVideoFrame::WrapData(v8::Isolate* isolate, BYTE* d
 	// This makes sure anyone hanging onto a data buffer (don't do that!) but not the
 	// frame won't have the buffer deallocated/reused out from under them.
 	// It also makes for a great potential memory leak!
-	result->Set(v8::String::New("frame"), GetInstance(isolate), v8::PropertyAttribute::ReadOnly);
+	result->Set(JSPROP_NAME("frame"), GetInstance(isolate), JSPROP_READONLY);
 	return scope.Close(result);
 }
 
 JSInterleavedVideoFrame::JSInterleavedVideoFrame(PVideoFrame aFrame, const VideoInfo& aVI, v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> templ)
-	: JSVideoFrame(aFrame, aVI, isolate, templ) {
+	: JSVideoFrame(aFrame, aVI, isolate, templ), simpleContext(NULL) {
 	PopulateInstance(v8::Local<v8::Object>::New(isolate, instance));
 }
 
 JSInterleavedVideoFrame::~JSInterleavedVideoFrame() {
 	TRACE_MEM();
+	// Release ourselves if we haven't yet - this also deletes our context, if
+	// there was one.
+	Release();
 	dataInstance.Dispose();
 }
 
 void JSInterleavedVideoFrame::Release() {
+	TRACE_MEM();
 	JSVideoFrame::Release();
 	v8::Isolate* isolate = v8::Isolate::GetCurrent();
 	v8::HandleScope scope(isolate);
 	if (!dataInstance.IsEmpty()) {
 		v8::Local<v8::ArrayBuffer>::New(isolate, dataInstance)->Neuter();
 	}
+	if (simpleContext != NULL) {
+		delete simpleContext;
+		simpleContext = NULL;
+	}
 }
 
 void JSInterleavedVideoFrame::PopulateInstance(v8::Handle<v8::Object> inst) {
-	inst->Set(v8::String::New("pitch"), v8::Int32::New(frame->GetPitch()), v8::PropertyAttribute::ReadOnly);
-	inst->Set(v8::String::New("rowSize"), v8::Int32::New(frame->GetRowSize()), v8::PropertyAttribute::ReadOnly);
-	inst->Set(v8::String::New("height"), v8::Int32::New(frame->GetHeight()), v8::PropertyAttribute::ReadOnly);
-	inst->Set(v8::String::New("bitsPerPixel"), v8::Int32::New(vi.BitsPerPixel()), v8::PropertyAttribute::ReadOnly);
-	inst->Set(v8::String::New("bytesPerPixel"), v8::Int32::New(vi.BytesFromPixels(1)), v8::PropertyAttribute::ReadOnly);
+	inst->Set(JSPROP_NAME("pitch"), v8::Int32::New(frame->GetPitch()), JSPROP_READONLY);
+	inst->Set(JSPROP_NAME("rowSize"), v8::Int32::New(frame->GetRowSize()), JSPROP_READONLY);
+	inst->Set(JSPROP_NAME("height"), v8::Int32::New(frame->GetHeight()), JSPROP_READONLY);
+	inst->Set(JSPROP_NAME("bitsPerPixel"), v8::Int32::New(vi.BitsPerPixel()), JSPROP_READONLY);
+	inst->Set(JSPROP_NAME("bytesPerPixel"), v8::Int32::New(vi.BytesFromPixels(1)), JSPROP_READONLY);
 	inst->SetInternalField(0, v8::External::New(this));
 }
+
+JSSimpleRenderingContext* JSInterleavedVideoFrame::GetSimpleContext() {
+	if (simpleContext != NULL) {
+		return simpleContext;
+	}
+	if (vi.IsRGB32()) {
+		v8::Isolate* isolate = v8::Isolate::GetCurrent();
+		MakeWriteable(isolate);
+		TRACE("After MakeWriteable, frame is writeable? %s\n", frame->IsWritable() ? "yes" : "no");
+		simpleContext = new RGB32SimpleRenderingContext(frame.operator->(), JSVEnvironment::GetCurrent(isolate)->NewSimpleContext());
+		return simpleContext;
+	} else {
+		// Not implemented:
+		return NULL;
+	}
+}
+
 
 void JSInterleavedVideoFrame::JSRelease(const v8::FunctionCallbackInfo<v8::Value>& info) {
 	JSInterleavedVideoFrame* self = UnwrapSelf<JSInterleavedVideoFrame>(info.This());
 	self->Release();
-}
-
-void JSInterleavedVideoFrame::JSGetContext(const v8::FunctionCallbackInfo<v8::Value>& args) {
-	if (args.Length() < 1) {
-		v8::ThrowException(v8::Exception::Error(v8::String::New("Missing required argument type")));
-	}
 }
 
 void JSInterleavedVideoFrame::JSGetData(v8::Local<v8::String>, const v8::PropertyCallbackInfo<v8::Value>& info) {
@@ -141,9 +196,9 @@ void JSInterleavedVideoFrame::JSGetData(v8::Local<v8::String>, const v8::Propert
 	}
 }
 
-void JSInterleavedVideoFrame::MakeWriteable(v8::Isolate* isolate) {
+bool JSInterleavedVideoFrame::MakeWriteable(v8::Isolate* isolate) {
 	if (released) {
-		return;
+		return false;
 	}
 	if (dataInstance.IsEmpty()) {
 		TRACE("Data instance is emtpy, building data\n");
@@ -160,22 +215,24 @@ void JSInterleavedVideoFrame::MakeWriteable(v8::Isolate* isolate) {
 		dataptr = frame->GetWritePtr();
 		if (dataptr == NULL) {
 			JSV_ERROR("Write pointer is null!");
-			// Return an empty handle
-			return;
+			// Leave the handle empty
+			return false;
 		}
 		// Create and persist the array buffer
 		v8::Handle<v8::ArrayBuffer> data = WrapData(isolate, dataptr, frame->GetPitch() * frame->GetHeight());
 		dataInstance.Reset(isolate, data);
 	}
+	return true;
 }
 
 v8::Handle<v8::ObjectTemplate> JSInterleavedVideoFrame::CreateTemplate(v8::Isolate* isolate) {
 	v8::HandleScope scope(isolate);
 	v8::Handle<v8::ObjectTemplate> templ = v8::ObjectTemplate::New();
-	templ->Set(v8::String::New("release"), v8::FunctionTemplate::New(JSRelease));
-	templ->Set(v8::String::New("planar"), v8::False(), v8::PropertyAttribute::ReadOnly);
-	templ->Set(v8::String::New("interleaved"), v8::True(), v8::PropertyAttribute::ReadOnly);
-	templ->SetAccessor(v8::String::New("data"), JSGetData);
+	templ->Set(JSPROP_NAME("release"), v8::FunctionTemplate::New(JSRelease), JSPROP_READONLY);
+	templ->Set(JSPROP_NAME("planar"), v8::False(), JSPROP_READONLY);
+	templ->Set(JSPROP_NAME("interleaved"), v8::True(), JSPROP_READONLY);
+	templ->SetAccessor(JSPROP_NAME("data"), JSGetData);
+	CreateTemplateDefaultFields(templ);
 	templ->SetInternalFieldCount(1);
 	return scope.Close(templ);
 }

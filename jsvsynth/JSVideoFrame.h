@@ -22,15 +22,27 @@
 
 namespace jsv {
 
+class JSSimpleRenderingContext;
+
 class JSVideoFrame {
 public:
 	JSVideoFrame(PVideoFrame frame, const VideoInfo& vi, v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> templ);
 	virtual ~JSVideoFrame();
 	v8::Handle<v8::Object> GetInstance(v8::Isolate* isolate);
+	/**
+	 * Release the video frame data back to AviSynth. Note: it should always be
+	 * safe to call this function multiple times.
+	 */
 	virtual void Release();
+	virtual JSSimpleRenderingContext* GetSimpleContext() = 0;
 	PVideoFrame GetVideoFrame() { return frame; }
 	static bool IsWrappedVideoFrame(v8::Handle<v8::Object> obj);
 	static JSVideoFrame* UnwrapVideoFrame(v8::Handle<v8::Object> obj);
+	/**
+	 * Create the various default parts of the template that are common between
+	 * all video frame types.
+	 */
+	static void CreateTemplateDefaultFields(v8::Handle<v8::ObjectTemplate>);
 protected:
 	v8::Handle<v8::ArrayBuffer> WrapData(v8::Isolate* isolate, BYTE* data, int length);
 	v8::Persistent<v8::Object> instance;
@@ -38,6 +50,9 @@ protected:
 	const VideoInfo& vi;
 	bool released;
 private:
+	// JS implementations of getContext and getSimpleContext
+	static void JSGetContext(const v8::FunctionCallbackInfo<v8::Value>&);
+	static void JSGetSimpleContext(const v8::FunctionCallbackInfo<v8::Value>&);
 	bool madeWeak;
 };
 
@@ -50,17 +65,19 @@ public:
 	JSInterleavedVideoFrame(PVideoFrame frame, const VideoInfo& vi, v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> templ);
 	~JSInterleavedVideoFrame();
 	virtual void Release();
+	virtual JSSimpleRenderingContext* GetSimpleContext();
 	static v8::Handle<v8::ObjectTemplate> CreateTemplate(v8::Isolate* isolate);
 private:
 	void PopulateInstance(v8::Handle<v8::Object> inst);
 	/**
-	 * Populate the internal data fields.
+	 * Populate the internal data fields. Returns true if they were populated
+	 * successfully, false if they were not.
 	 */
-	void MakeWriteable(v8::Isolate* isolate);
+	bool MakeWriteable(v8::Isolate* isolate);
 	static void JSRelease(const v8::FunctionCallbackInfo<v8::Value>&);
-	static void JSGetContext(const v8::FunctionCallbackInfo<v8::Value>&);
 	static void JSGetData(v8::Local<v8::String>, const v8::PropertyCallbackInfo<v8::Value>&);
 	v8::Persistent<v8::ArrayBuffer> dataInstance;
+	JSSimpleRenderingContext* simpleContext;
 };
 
 /**
@@ -71,6 +88,7 @@ public:
 	JSPlanarVideoFrame(PVideoFrame frame, const VideoInfo& vi, v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> templ);
 	~JSPlanarVideoFrame();
 	virtual void Release();
+	virtual JSSimpleRenderingContext* GetSimpleContext() { return NULL; }
 	static v8::Handle<v8::ObjectTemplate> CreateTemplate(v8::Isolate* isolate);
 private:
 	void PopulateInstance(v8::Handle<v8::Object> inst);

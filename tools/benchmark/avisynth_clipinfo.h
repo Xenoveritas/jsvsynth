@@ -1,4 +1,6 @@
 // This file is actually part of AviSynth's "main.cpp".
+// I'm reproducing just the needed part here, but maintaining the original
+// copyright and license notice.
 
 // Avisynth v2.5.  Copyright 2007 Ben Rudiak-Gould et al.
 // http://www.avisynth.org

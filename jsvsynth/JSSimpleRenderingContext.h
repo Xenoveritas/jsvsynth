@@ -25,13 +25,29 @@ namespace jsv {
 class JSSimpleRenderingContext {
 public:
 	JSSimpleRenderingContext(void);
+	/**
+	 * Deletes the rendering context.
+	 */
 	~JSSimpleRenderingContext(void);
+	v8::Handle<v8::Object> GetInstance(v8::Isolate* isolate) { return v8::Local<v8::Object>::New(isolate, jsThis); }
 	static v8::Handle<v8::ObjectTemplate> CreateTemplate(v8::Isolate*);
 	virtual void FillRect(UINT32 color, int x, int y, int width, int height) = 0;
 	virtual void DrawImage(PVideoFrame otherFrame, int x, int y) = 0;
 	// TODO: virtual void DrawImage(PVideoFrame otherFrame, int x, int y, int width, int height) = 0;
 	// TODO: virtual void DrawImage(PVideoFrame otherFrame, int x, int y, int width, int height) = 0;
 	// TODO: virtual void DrawImage(PVideoFrame otherFrame, int sx, int sy, int sw, int sh, int dx, int dy, int dw, int dh) = 0;
+protected:
+	/**
+	 * Embed this into the given JavaScript object. This can't be done during
+	 * the constructor because it needs to happen after the entire class chain
+	 * has been initialized, instead it's up to the final constructor to invoke
+	 * this method.
+	 */
+	void WrapSelf(v8::Handle<v8::Object> self);
+	/**
+	 * The JavaScript object this C++ class represents.
+	 */
+	v8::Persistent<v8::Object> jsThis;
 private:
 	static void JSFillRect(const v8::FunctionCallbackInfo<v8::Value>&);
 	static void JSDrawImage(const v8::FunctionCallbackInfo<v8::Value>&);
@@ -43,10 +59,26 @@ private:
  */
 class RGB32SimpleRenderingContext : public JSSimpleRenderingContext {
 public:
-	RGB32SimpleRenderingContext(PVideoFrame frame, v8::Handle<v8::Object> self);
+	/**
+	 * Create a new rendering context for a given video frame. Note that this
+	 * does NOT use a "smart pointer" as the smart pointer would make the frame
+	 * unwriteable as it's intended to be used for filters passing frames
+	 * between themselves.
+	 *
+	 * Since AviSynth doesn't bother implementing operator*() for PVideoFrame,
+	 * you instead need to do frame.operator->() to get the pointer.
+	 */
+	RGB32SimpleRenderingContext(VideoFrame* frame, v8::Handle<v8::Object> self);
 	~RGB32SimpleRenderingContext();
+	virtual void FillRect(UINT32 color, int x, int y, int width, int height);
+	virtual void DrawImage(PVideoFrame otherFrame, int x, int y);
 private:
 	BYTE* frameData;
+	size_t pitch;
+	// The values retrieved from AviSynth and unsigned, so we might as well
+	// keep them that way.
+	int frameWidth;
+	int frameHeight;
 };
 
 };

@@ -21,6 +21,18 @@
  */
 
 /**
+ * Constant for marking a property both read-only and don't delete.
+ */
+#define JSPROP_READONLY		(v8::PropertyAttribute)(v8::PropertyAttribute::ReadOnly | v8::PropertyAttribute::DontDelete)
+
+/**
+ * Define a string that's to be used as a property name in a template.
+ * This macro mostly exists because I have a feeling v8::String::New is going
+ * to turn out to be the wrong method.
+ */
+#define JSPROP_NAME(NAME)		v8::String::New(NAME)
+
+/**
  * Declare a property getter for the given property.
  */
 #define PROPERTY_GETTER(TYPE, NAME)	TYPE Get ## NAME ()

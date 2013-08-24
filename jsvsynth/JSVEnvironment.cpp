@@ -24,6 +24,7 @@
 #include "Function.h"
 #include "JSFilter.h"
 #include "JSVideoFrame.h"
+#include "JSSimpleRenderingContext.h"
 #include "util.h"
 
 AVSValue __cdecl InvokeJSFunction(AVSValue args, void* user_data, IScriptEnvironment* env);
@@ -47,6 +48,7 @@ JSVEnvironment::JSVEnvironment(IScriptEnvironment* env) : avisynthEnv(env) {
 	avsFuncWrapperTemplate.Reset(isolate, AVSFunction::CreateTemplate());
 	interleavedVideoFrameTemplate.Reset(isolate, JSInterleavedVideoFrame::CreateTemplate(isolate));
 	planarVideoFrameTemplate.Reset(isolate, JSPlanarVideoFrame::CreateTemplate(isolate));
+	simpleContextTemplate.Reset(isolate, JSSimpleRenderingContext::CreateTemplate(isolate));
 }
 
 JSVEnvironment::~JSVEnvironment() {
@@ -100,7 +102,7 @@ void DebugShowAlert(const v8::FunctionCallbackInfo<v8::Value>& args) {
 		if (offset + stringLen > ALERT_MAX_SIZE) {
 			stringLen = ALERT_MAX_SIZE - offset;
 		}
-		str->Write((uint16_t*)(message + offset), 0, stringLen);
+		str->Write(reinterpret_cast<uint16_t*>(message + offset), 0, stringLen);
 		offset += stringLen;
 	}
 	message[offset] = 0;
@@ -172,6 +174,14 @@ void JSVEnvironment::CreateGlobals(v8::Handle<v8::Object> global) {
 	v8::Handle<v8::Object> avs = avsTemplate->NewInstance();
 	avs->SetInternalField(0, wrapped);
 	global->Set(v8::String::New("avs"), avs);
+}
+
+//
+// The following functions create instances of the templates
+//
+
+v8::Handle<v8::Object> JSVEnvironment::NewSimpleContext() {
+	return v8::Local<v8::ObjectTemplate>::New(isolate, simpleContextTemplate)->NewInstance();
 }
 
 void JSVEnvironment::WrapJSFunction(v8::Handle<v8::String> name, v8::Handle<v8::Function> function) {

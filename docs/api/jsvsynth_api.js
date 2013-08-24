@@ -493,7 +493,8 @@ AviSynth.SimpleRenderingContext.prototype = new AviSynth.RenderingContext();
 /**
  * Fill a rectange with the given color. For RGB32 clips, the color is a 32-bit
  * value packed <code>ARGB</code>. For YUV clips it will probably be YUV,
- * assuming it's ever supported.
+ * assuming it's ever supported. (It's also possibly YUV clips will take in a
+ * "special" color object and that numbers will <em>always</em> be RGB.)
  *
  * @param {number} color
  *                  the color as a number
