@@ -20,7 +20,7 @@ filter.getFrame = function(num) {
 
 filter;
 
-var yuvFilter = new AviSynth.Filter(avs.BlankClip({pixel_type:"YV12"}));
+var yuvFilter = new AviSynth.Filter(avs.BlankClip({length:20,pixel_type:"YV12"}));
 
 assert(yuvFilter.getFrame != null, "getFrame wasn't set");
 assert(yuvFilter.child != null, "child isn't available to JavaScript");
