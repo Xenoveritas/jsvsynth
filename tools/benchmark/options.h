@@ -69,6 +69,17 @@ protected:
 	bool wasSet;
 };
 
+class IntOption : public Option {
+public:
+	IntOption(int defaultValue) : Option(OptionTypeRequired), value(defaultValue) { }
+	~IntOption() { }
+	virtual bool ApplyOption() { return false; }
+	virtual bool ApplyOption(const std::wstring optionValue);
+	int GetValue() const { return value; }
+protected:
+	int value;
+};
+
 class OptionParser {
 public:
 	OptionParser();
@@ -78,7 +89,7 @@ public:
 	void AddOption(Option& option, wchar_t shortName);
 	Option* GetShortOption(wchar_t name);
 	Option* GetLongOption(wchar_t const* name) { return GetLongOption(std::wstring(name)); }
-	Option* GetLongOption(std::wstring name);
+	Option* GetLongOption(const std::wstring name);
 	/**
 	 * Parse the command line. Returns true if the command line was parsed
 	 * without errors, false if there was an error as reported by any of the
@@ -119,8 +130,15 @@ public:
 	 */
 	virtual bool ApplyUnknownOption(const std::wstring name, const std::wstring value) { return false; }
 private:
+	/**
+	 * Do whatever's necessary to match the string with arguments.
+	 * Currently this means "convert to lowercase".
+	 */
+	void CanonicalizeString(std::wstring&);
+	wchar_t CanonicalizeCharacter(wchar_t);
 	bool HandleFlag(std::wstring flag, wchar_t valueSeparator, bool canAdvance, int* currentArg, int argc, wchar_t const* const argv[]);
 	std::map<std::wstring,Option&> longOptions;
 	std::map<wchar_t,Option&> shortOptions;
 	std::vector<std::wstring> arguments;
+	std::locale loc;
 };

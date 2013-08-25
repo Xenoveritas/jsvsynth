@@ -18,26 +18,54 @@
 #include "stdafx.h"
 
 #include <iostream>
+#include <algorithm>
+#include <locale>
+
+bool IntOption::ApplyOption(const std::wstring optionValue) {
+	try {
+		value = stoi(optionValue);
+		return true;
+	} catch (std::exception&) {
+		std::wcerr << "Bad integer value: " << optionValue << std::endl;
+		return false;
+	}
+}
 
 OptionParser::OptionParser() { }
 OptionParser::~OptionParser() {
 	// FIXME: Free strings?
 }
 
+void OptionParser::CanonicalizeString(std::wstring& str) {
+	for (std::wstring::iterator it = str.begin(); it != str.end(); it++) {
+		*it = CanonicalizeCharacter(*it);
+	}
+}
+
+wchar_t OptionParser::CanonicalizeCharacter(wchar_t c) {
+	return std::use_facet<std::ctype<wchar_t>>(loc).tolower(c);
+}
+
 void OptionParser::AddOption(Option& option, wchar_t const* longName, wchar_t shortName) {
-	longOptions.insert(std::pair<std::wstring,Option&>(std::wstring(longName), option));
-	shortOptions.insert(std::pair<wchar_t,Option&>(shortName, option));
+	AddOption(option, longName);
+	AddOption(option, shortName);
 }
 
 void OptionParser::AddOption(Option& option, wchar_t const* longName) {
+	// For now, canonicalize on lowercase names
+	std::wstring key(longName);
+	CanonicalizeString(key);
 	longOptions.insert(std::pair<std::wstring,Option&>(std::wstring(longName), option));
 }
 
 void OptionParser::AddOption(Option& option, wchar_t shortName) {
+	// For now, canonicalize on lowercase names
+	shortName = CanonicalizeCharacter(shortName);
 	shortOptions.insert(std::pair<wchar_t,Option&>(shortName, option));
 }
 
 Option* OptionParser::GetShortOption(wchar_t name) {
+	name = CanonicalizeCharacter(name);
 	std::map<wchar_t,Option&>::iterator it = shortOptions.find(name);
 	if (it == shortOptions.end()) {
 		return NULL;
@@ -45,8 +73,11 @@ Option* OptionParser::GetShortOption(wchar_t name) {
 	return &(it->second);
 }
 
-Option* OptionParser::GetLongOption(std::wstring name) {
-	std::map<std::wstring,Option&>::iterator it = longOptions.find(name);
+Option* OptionParser::GetLongOption(const std::wstring name) {
+	std::wstring longName(name);
+	CanonicalizeString(longName);
+	std::wcerr << "Converted " << name << " to " << longName << std::endl;
+	std::map<std::wstring,Option&>::iterator it = longOptions.find(longName);
 	if (it == longOptions.end()) {
 		return NULL;
 	}
@@ -121,9 +152,16 @@ bool OptionParser::HandleFlag(std::wstring flag, wchar_t valueSeparator, bool ca
 		flag.resize(found);
 	}
 	Option* opt = GetLongOption(flag);
+	// HACK: If the value separator is ':' and the flag is a single character
+	// long (ie, a Windows option), also check the short options.
+	if (opt == NULL && valueSeparator == ':' && flag.length() == 1) {
+		opt = GetShortOption(flag[0]);
+	}
 	OptionType type = OptionTypeNone;
 	if (opt == NULL) {
-		HandleUnknownOption(flag, &type);
+		if (!HandleUnknownOption(flag, &type)) {
+			return false;
+		}
 	} else {
 		type = opt->GetOptionType();
 	}
@@ -136,7 +174,7 @@ bool OptionParser::HandleFlag(std::wstring flag, wchar_t valueSeparator, bool ca
 		break;
 	case OptionTypeOptional:
 		// In this case, either we have the value, in which case we immediately
-		// pass it
+		// pass it, or we don't, in which case we assume it wasn't given
 		break;
 	case OptionTypeRequired:
 		if (!hasValue) {

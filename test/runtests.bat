@@ -5,26 +5,23 @@ REM Test scripts are run through VirtualDub (using vdub.exe).
 
 IF EXIST setenv.bat CALL setenv.bat
 
-IF NOT "%VDUB_HOME%"=="" GOTO VdubIsSet
+SET TEST_MODE=Debug
+IF "%1"=="/Release" SET TEST_MODE=Release
 
-IF "%PROCESSOR_ARCHITECTURE%"=="AMD64" SET VDUB_HOME=%ProgramFiles(x86)%\VirtualDub
-IF NOT "%PROCESSOR_ARCHITECTURE%"=="AMD64" SET VDUB_HOME=%ProgramFiles%\VirtualDub
+REM Make sure benchmark.exe exists
 
-:VdubIsSet
+SET TESTRUNNER=%~dp0
+SET TESTRUNNER=%TESTRUNNER%\..\%TEST_MODE%\benchmark.exe
 
-IF EXIST "%VDUB_HOME%\vdub.exe" GOTO HaveVdub
+IF EXIST %TESTRUNNER% GOTO HaveTestRunner
 
-ECHO Unable to locate VirtualDub "VDUB.EXE" in "%VDUB_HOME%".
+ECHO Unable to locate %TESTRUNNER%
 ECHO.
-ECHO Either set VDUB_HOME to point to where you have VirtualDub installed or
-ECHO install VirtualDub into that directory.
+ECHO Please make sure you've got the entire project built.
 
 EXIT /B 1
 
-:HaveVdub
-
-SET TEST_MODE=Debug
-IF "%1"=="/Release" SET TEST_MODE=Release
+:HaveTestRunner
 
 REM Don't ask me why this needs to be a full path, but sometimes apparently it
 REM does. Other times AviSynth will happily load it as relative. So don't care

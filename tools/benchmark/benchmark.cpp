@@ -175,6 +175,9 @@ void showHelp(FILE *fp, _TCHAR* name=NULL) {
 				 L"                  AVIFile.\n"
 				 L"    /T, /THREADS  After loading the file in a main thread, run through the\n"
 				 L"                  frames in a background thread.\n"
+				 L"    /R:<N>,       Run the video N number of times (must be at least 1)\n"
+				 L"        /RUN:<N>\n"
+				 L"        /TEST     Run in \"test mode\" (/RUNS:2)\n"
 				 L"    /?, /HELP     Show this help.\n");
 }
 
@@ -237,12 +240,16 @@ void showMemoryUsage() {
 int _tmain(int argc, _TCHAR* argv[]) {
 	BooleanOption showMemoryStats;
 	BooleanOption multithreaded;
+	BooleanOption testMode;
 	BooleanOption help;
+	IntOption runs(1);
 	OptionParser parser;
 	parser.AddOption(showMemoryStats, L"memory", L'm');
 	parser.AddOption(multithreaded, L"threads", L't');
+	parser.AddOption(testMode, L"test");
 	parser.AddOption(help, L"help", L'h');
 	parser.AddOption(help, L'?');
+	parser.AddOption(runs, L"runs", L'r');
 	if (!parser.Parse(argc, (wchar_t**) argv)) {
 		if (help.IsSet()) {
 			showHelp(stdout, argv[0]);
@@ -283,12 +290,28 @@ int _tmain(int argc, _TCHAR* argv[]) {
 		showMemoryUsage();
 		wprintf(L"----------------------------------------\n");
 	}
-	// Open up our input file
-	bool result = benchmarkFile((LPWSTR) arguments[0].c_str());
-	if (showMemoryStats.IsSet()) {
-		wprintf(L"Post-benchmark memory usage:\n----------------------------------------\n");
-		showMemoryUsage();
-		wprintf(L"----------------------------------------\n");
+	int totalRuns = runs.GetValue();
+	if (testMode.IsSet()) {
+		totalRuns = 2;
+	}
+	if (totalRuns <= 0) {
+		fwprintf(stderr, L"Invalid run count %d, running once instead.\n", totalRuns);
+		totalRuns = 1;
+	}
+	bool result = true;
+	for (int r = 1; r <= totalRuns && result; r++) {
+		if (totalRuns > 1) {
+			fwprintf(stderr, L"Run %d/%d:\n", r, totalRuns);
+		}
+		// Do a run
+		if (!benchmarkFile((LPWSTR) arguments[0].c_str())) {
+			result = false;
+		}
+		if (showMemoryStats.IsSet()) {
+			wprintf(L"Post-benchmark memory usage:\n----------------------------------------\n");
+			showMemoryUsage();
+			wprintf(L"----------------------------------------\n");
+		}
 	}
 	AVIFileExit();
 	if (showMemoryStats.IsSet()) {

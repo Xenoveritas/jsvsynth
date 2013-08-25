@@ -56,6 +56,11 @@ AVSValue __cdecl JS_Import(AVSValue args, void* user_data, IScriptEnvironment* e
 }
 
 void InitV8() {
+	static bool v8Ready = false;
+	if (v8Ready) {
+		TRACE("Double-initialized, skipping V8 initialization.\n");
+		return;
+	}
 	TRACE("Initializing V8 settings...\n");
 	v8::V8::InitializeICU();
 	// Pretend we're a command line program and set some crap for V8
@@ -71,6 +76,7 @@ void InitV8() {
 	free(fake_argv[1]);
 	delete[] fake_argv;
 	v8::V8::SetArrayBufferAllocator(new jsv::JSVAllocator());
+	v8Ready = true;
 }
 
 extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit2(IScriptEnvironment* env) {

@@ -168,7 +168,6 @@ JSSimpleRenderingContext* JSInterleavedVideoFrame::GetSimpleContext() {
 	if (vi.IsRGB32()) {
 		v8::Isolate* isolate = v8::Isolate::GetCurrent();
 		MakeWriteable(isolate);
-		TRACE("After MakeWriteable, frame is writeable? %s\n", frame->IsWritable() ? "yes" : "no");
 		simpleContext = new RGB32SimpleRenderingContext(frame.operator->(), JSVEnvironment::GetCurrent(isolate)->NewSimpleContext());
 		return simpleContext;
 	} else {
@@ -201,20 +200,17 @@ bool JSInterleavedVideoFrame::MakeWriteable(v8::Isolate* isolate) {
 		return false;
 	}
 	if (dataInstance.IsEmpty()) {
-		TRACE("Data instance is emtpy, building data\n");
 		v8::HandleScope scope(isolate);
 		// If I could make this "copy on write" I'd love to, but there doesn't
 		// seem to really be a way to do that, so instead just always make it
 		// writable.
-		TRACE("Getting the write pointer\n");
 		BYTE* dataptr;
 		if (!frame->IsWritable()) {
-			TRACE("Had to make the frame writeable\n");
 			JSVEnvironment::GetCurrent()->GetAVSScriptEnvironment()->MakeWritable(&frame);
 		}
 		dataptr = frame->GetWritePtr();
 		if (dataptr == NULL) {
-			JSV_ERROR("Write pointer is null!");
+			JSV_ERROR("Write pointer is null after MakeWriteable!");
 			// Leave the handle empty
 			return false;
 		}
