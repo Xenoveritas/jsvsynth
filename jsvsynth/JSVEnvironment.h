@@ -25,6 +25,8 @@ namespace jsv
 {
 class JSFunction;
 
+// There's probably a better place to put this, but whatever.
+const char* ToCString(const v8::String::Utf8Value& value);
 void ThrowErrorInAviSynth(IScriptEnvironment* env, v8::Isolate* isolate, v8::TryCatch* try_catch);
 
 class JSVEnvironment {

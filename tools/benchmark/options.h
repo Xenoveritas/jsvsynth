@@ -80,6 +80,17 @@ protected:
 	int value;
 };
 
+class LongOption : public Option {
+public:
+	LongOption(long defaultValue) : Option(OptionTypeRequired), value(defaultValue) { }
+	~LongOption() { }
+	virtual bool ApplyOption() { return false; }
+	virtual bool ApplyOption(const std::wstring optionValue);
+	long GetValue() const { return value; }
+protected:
+	long value;
+};
+
 class OptionParser {
 public:
 	OptionParser();

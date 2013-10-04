@@ -23,7 +23,17 @@
 
 bool IntOption::ApplyOption(const std::wstring optionValue) {
 	try {
-		value = stoi(optionValue);
+		value = std::stoi(optionValue);
+		return true;
+	} catch (std::exception&) {
+		std::wcerr << "Bad integer value: " << optionValue << std::endl;
+		return false;
+	}
+}
+
+bool LongOption::ApplyOption(const std::wstring optionValue) {
+	try {
+		value = std::stol(optionValue);
 		return true;
 	} catch (std::exception&) {
 		std::wcerr << "Bad integer value: " << optionValue << std::endl;

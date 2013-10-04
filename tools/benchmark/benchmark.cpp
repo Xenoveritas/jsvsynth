@@ -54,7 +54,7 @@ TCHAR* formatTime(LARGE_INTEGER start, LARGE_INTEGER end) {
 	return formatted;
 }
 
-bool benchmarkFile(const LPWSTR filename) {
+bool benchmarkFile(const LPWSTR filename, LONG startingFrame, LONG endingFrame) {
 	HRESULT hr;
 	PAVIFILE pAvi;
 	AVIFILEINFO aviInfo;
@@ -129,9 +129,16 @@ bool benchmarkFile(const LPWSTR filename) {
 			streamFormatSize = sizeof(formatInfo);
 			AVIStreamReadFormat(pStream, 0, &formatInfo, &streamFormatSize);
 			frameData = malloc(formatInfo.biSizeImage);
-			LONG endPos = streamInfo.dwStart + streamInfo.dwLength - 1;
-			for (LONG pos = streamInfo.dwStart; pos <= endPos; pos++) {
-				wprintf(L"\rFrame %ld/%ld...", pos, endPos);
+			LONG endPos = streamInfo.dwStart + streamInfo.dwLength;
+			if (startingFrame < streamInfo.dwStart)
+				startingFrame = streamInfo.dwStart;
+			if (endingFrame < endPos)
+				endPos = endingFrame;
+			for (LONG pos = startingFrame; pos < endPos; pos++) {
+				// Screw it, let's report frame 1/(total), so it's up to the
+				// user to know that the frame index being reported is 1 more
+				// than the actual frame index.
+				wprintf(L"\rFrame %ld/%ld...", pos+1, endPos);
 				hr = AVIStreamRead(pStream, pos, 1, frameData, formatInfo.biSizeImage, NULL, NULL);
 				if (frameData == NULL || hr != 0) {
 					result = false;
@@ -175,8 +182,13 @@ void showHelp(FILE *fp, _TCHAR* name=NULL) {
 				 L"                  AVIFile.\n"
 				 L"    /T, /THREADS  After loading the file in a main thread, run through the\n"
 				 L"                  frames in a background thread.\n"
+				 L"    /S:<N>,       When producing frames, start with frame N.\n"
+				 L"      /START:<N>\n"
+				 L"    /E:<N>,       When producing frames, end with frame N.\n"
+				 L"      /END:<N>\n"
+				 L"    /N, /NOFRAMES Do not process any frames.\n"
 				 L"    /R:<N>,       Run the video N number of times (must be at least 1)\n"
-				 L"        /RUN:<N>\n"
+				 L"      /RUN:<N>\n"
 				 L"        /TEST     Run in \"test mode\" (/RUNS:2)\n"
 				 L"    /?, /HELP     Show this help.\n");
 }
@@ -243,6 +255,9 @@ int _tmain(int argc, _TCHAR* argv[]) {
 	BooleanOption testMode;
 	BooleanOption help;
 	IntOption runs(1);
+	IntOption startOnFrame(0);
+	IntOption endOnFrame(MAXINT);
+	BooleanOption noFrames;
 	OptionParser parser;
 	parser.AddOption(showMemoryStats, L"memory", L'm');
 	parser.AddOption(multithreaded, L"threads", L't');
@@ -250,6 +265,9 @@ int _tmain(int argc, _TCHAR* argv[]) {
 	parser.AddOption(help, L"help", L'h');
 	parser.AddOption(help, L'?');
 	parser.AddOption(runs, L"runs", L'r');
+	parser.AddOption(startOnFrame, L"start", L's');
+	parser.AddOption(endOnFrame, L"end", L'e');
+	parser.AddOption(noFrames, L"noframes", L'n');
 	if (!parser.Parse(argc, (wchar_t**) argv)) {
 		if (help.IsSet()) {
 			showHelp(stdout, argv[0]);
@@ -304,7 +322,7 @@ int _tmain(int argc, _TCHAR* argv[]) {
 			fwprintf(stderr, L"Run %d/%d:\n", r, totalRuns);
 		}
 		// Do a run
-		if (!benchmarkFile((LPWSTR) arguments[0].c_str())) {
+		if (!benchmarkFile((LPWSTR) arguments[0].c_str(), startOnFrame.GetValue(), endOnFrame.GetValue())) {
 			result = false;
 		}
 		if (showMemoryStats.IsSet()) {

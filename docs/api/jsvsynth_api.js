@@ -492,9 +492,15 @@ AviSynth.SimpleRenderingContext.prototype = new AviSynth.RenderingContext();
 
 /**
  * Fill a rectange with the given color. For RGB32 clips, the color is a 32-bit
- * value packed <code>ARGB</code>. For YUV clips it will probably be YUV,
- * assuming it's ever supported. (It's also possibly YUV clips will take in a
- * "special" color object and that numbers will <em>always</em> be RGB.)
+ * value packed <code>ARGB</code>. For YUV clips it will probably be YUV packed
+ * in some way, assuming contexts for YUV clips are ever supported. (It's also
+ * possibly YUV clips will take in a "special" color object and that numbers
+ * will <em>always</em> be RGB.)
+ * <p>
+ * <strong>Important:</strong> This <strong>does not</strong> composite the
+ * rectangle onto the frame, it completely replaces the pixels, including the
+ * alpha channel! (This may be changed in the future by providing a "composite"
+ * parameter.)
  *
  * @param {number} color
  *                  the color as a number
@@ -512,8 +518,13 @@ AviSynth.SimpleRenderingContext.prototype.fillRect = function(color, x, y, width
 /**
  * Draw a different frame onto this frame. The colorspaces of the two frames
  * must match.
+ * <p>
+ * <strong>Important:</strong> This <strong>does not</strong> composite the
+ * source image onto this frame, the entire thing (including alpha channel) is
+ * copied directly! (This may be changed in the future by providing a "composite"
+ * parameter.)
  *
- * @param {number} frame
+ * @param {AviSynth.VideoFrame} frame
  *                  the other frame to draw onto the context frame
  * @param {number} x
  *                  the x coordinate in pixels
@@ -521,3 +532,30 @@ AviSynth.SimpleRenderingContext.prototype.fillRect = function(color, x, y, width
  *                  the y coordinate in pixels
  */
 AviSynth.SimpleRenderingContext.prototype.drawImage = function(frame, x, y) { };
+
+/**
+ * Draw a portion of a different frame onto this frame. The colorspaces of the
+ * two frames must match.
+ * <p>
+ * <strong>Important:</strong> This <strong>does not</strong> composite the
+ * source image onto this frame, the entire thing (including alpha channel) is
+ * copied directly!
+ *
+ * @param {AviSynth.VideoFrame} frame
+ *                  the other frame to draw onto the context frame
+ * @param {number} sx
+ *                  the x coordinate of the part of the source frame to draw in
+ *                  pixels
+ * @param {number} sy
+ *                  the y coordinate of the part of the source frame to draw in
+ *                  pixels
+ * @param {number} sw
+ *                  the width of the part of the source frame to draw in pixels
+ * @param {number} sh
+ *                  the height of the part of the source frame to draw in pixels
+ * @param {number} dx
+ *                  the x coordinate to draw to in this frame
+ * @param {number} dy
+ *                  the y coordinate to draw to in this frame
+ */
+AviSynth.SimpleRenderingContext.prototype.drawImage = function(frame, sx, sy, sw, sh, dx, dy) { };

@@ -5,7 +5,7 @@
 
 var doc_dir = 'docs';
 var output_dir = 'build/website';
-var css = 'jsvsynth.css';
+var css = [ 'bootstrap/css/bootstrap.min.css', 'bootstrap/css/bootstrap-theme.min.css' ];
 var jsdoc_api = 'docs/api/jsvsynth_api.js';
 var jsdoc_dest = output_dir + '/api';
 var jsdoc_template = false;//'templates/haruki';
@@ -19,11 +19,11 @@ var child_process = require('child_process');
 // Normalize paths from above
 doc_dir = path.normalize(doc_dir);
 output_dir = path.normalize(output_dir);
-css = path.normalize(css);
 jsdoc_api = path.normalize(jsdoc_api);
 jsdoc_dest = path.normalize(jsdoc_dest);
 
 function mkdirs(dir) {
+	console.log('mkdir: %s', dir);
 	if (!fs.existsSync(dir)) {
 		var parent = path.dirname(dir);
 		if (!parent || parent == dir) {
@@ -57,14 +57,9 @@ function copy(source, dest, callback) {
 
 mkdirs(output_dir);
 
-var css_href = css;
-if (path.sep != '/') {
-	css_href = css.replace(path.sep, '/');
-}
-
 // Our very simple template for the header and footer of the file.
 var template = {
-	head: "<!DOCTYPE html>\n\n<html>\n<head>\n<title>$TITLE</title>\n<link rel=\"stylesheet\" type=\"text/css\" href=\"" + css_href + "\">\n</head>\n<body>\n",
+	head: "<!DOCTYPE html>\n\n<html>\n<head>\n<title>$TITLE</title>\n</head>\n<body>\n",
 	foot: "</body>\n</html>\n"
 };
 
@@ -122,13 +117,38 @@ function createMarkdown(next) {
 }
 
 function copyCSS(next) {
-	copy(path.join(doc_dir, css), path.join(output_dir, css), function(err) {
-		if (err) {
-			console.error("CSS copy failed!");
-			console.error(err);
-		}
-		next();
+	if (typeof css == 'string') {
+		css = [ css ];
+	}
+	var copyFrom = new Array(css.length);
+	var copyTo = new Array(css.length);
+	css.forEach(function(file, idx) {
+		// Step 1: normalize
+		file = path.normalize(file);
+		// Step 2: translate to "to" and "from" dirs
+		var from = path.join(doc_dir, file);
+		var to = path.join(output_dir, file);
+		// Step 3: Make sure the to directory exists
+		mkdirs(path.dirname(to));
+		copyFrom[idx] = from;
+		copyTo[idx] = to;
+		console.log('Schedule[%d]: %s => %s', idx, from, to);
 	});
+	function copyNext(idx) {
+		if (idx < copyFrom.length) {
+			copy(copyFrom[idx], copyTo[idx], function(err) {
+				if (err) {
+					console.error("CSS copy failed!");
+					console.error(err);
+				} else {
+					copyNext(++idx);
+				}
+			});
+		} else {
+			next();
+		}
+	}
+	copyNext(0);
 }
 
 function runJSDoc(next) {

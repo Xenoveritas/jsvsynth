@@ -35,7 +35,10 @@ public:
 	 */
 	virtual void Release();
 	virtual JSSimpleRenderingContext* GetSimpleContext() = 0;
-	PVideoFrame GetVideoFrame() { return frame; }
+	PVideoFrame GetVideoFrame() const { return frame; }
+	int GetWidth() const { return vi.width; }
+	int GetHeight() const { return vi.height; }
+	const VideoInfo& GetVideoInfo() const { return vi; }
 	static bool IsWrappedVideoFrame(v8::Handle<v8::Object> obj);
 	static JSVideoFrame* UnwrapVideoFrame(v8::Handle<v8::Object> obj);
 	/**

@@ -24,18 +24,31 @@ namespace jsv {
  */
 class JSSimpleRenderingContext {
 public:
-	JSSimpleRenderingContext(void);
+	JSSimpleRenderingContext(int aWidth, int aHeight) : width(aWidth), height(aHeight) { }
 	/**
 	 * Deletes the rendering context.
 	 */
 	~JSSimpleRenderingContext(void);
 	v8::Handle<v8::Object> GetInstance(v8::Isolate* isolate) { return v8::Local<v8::Object>::New(isolate, jsThis); }
 	static v8::Handle<v8::ObjectTemplate> CreateTemplate(v8::Isolate*);
+	/**
+	 * Determine if the given frame is an allowed source for DrawImage.
+	 */
+	virtual bool CanDrawImageFrom(JSVideoFrame& other) = 0;
+	/**
+	 * Fill the given rectangle with a color. Note: this MUST be clipped within
+	 * the frame rect. The JSFillRect JavaScript wrapper performs this clipping,
+	 * which means that this call is allowed to assume that this call provides
+	 * a rectangle that is located entirely within the frame.
+	 */
 	virtual void FillRect(UINT32 color, int x, int y, int width, int height) = 0;
-	virtual void DrawImage(PVideoFrame otherFrame, int x, int y) = 0;
-	// TODO: virtual void DrawImage(PVideoFrame otherFrame, int x, int y, int width, int height) = 0;
-	// TODO: virtual void DrawImage(PVideoFrame otherFrame, int x, int y, int width, int height) = 0;
-	// TODO: virtual void DrawImage(PVideoFrame otherFrame, int sx, int sy, int sw, int sh, int dx, int dy, int dw, int dh) = 0;
+	/**
+	 * Render a chunk of a different frame onto this frame. Note: the
+	 * sx,sy,sw,sh fields must define an area entirely within the source frame,
+	 * and the dx,dy part must lie within this frame. The JSDrawFrame
+	 * JavaScript wrapper enforces this constraint.
+	 */
+	virtual void DrawImage(JSVideoFrame& sourceFrame, int sx, int sy, int sw, int sh, int dx, int dy) = 0;
 protected:
 	/**
 	 * Embed this into the given JavaScript object. This can't be done during
@@ -48,6 +61,16 @@ protected:
 	 * The JavaScript object this C++ class represents.
 	 */
 	v8::Persistent<v8::Object> jsThis;
+	/**
+	 * The width of the frame in pixels. This is used to properly "crop" calls
+	 * to be within the boundaries of the image.
+	 */
+	int width;
+	/**
+	 * The height of the frame in pixels. This is used to properly "crop" calls
+	 * to be within the boundaries of the image.
+	 */
+	int height;
 private:
 	static void JSFillRect(const v8::FunctionCallbackInfo<v8::Value>&);
 	static void JSDrawImage(const v8::FunctionCallbackInfo<v8::Value>&);
@@ -70,15 +93,13 @@ public:
 	 */
 	RGB32SimpleRenderingContext(VideoFrame* frame, v8::Handle<v8::Object> self);
 	~RGB32SimpleRenderingContext();
+	virtual bool CanDrawImageFrom(JSVideoFrame& other);
 	virtual void FillRect(UINT32 color, int x, int y, int width, int height);
-	virtual void DrawImage(PVideoFrame otherFrame, int x, int y);
+	virtual void DrawImage(JSVideoFrame& otherFrame, int sx, int sy, int sw, int sh, int dx, int dy);
 private:
 	BYTE* frameData;
 	size_t pitch;
-	// The values retrieved from AviSynth and unsigned, so we might as well
-	// keep them that way.
-	int frameWidth;
-	int frameHeight;
+	size_t totalSize;
 };
 
 };

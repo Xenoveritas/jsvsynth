@@ -4,6 +4,8 @@ JavaScript("""
 //console.alert("Attach debugger now");
 var filter = new AviSynth.Filter(avs.BlankClip());
 
+console.log(AviSynth.Filter.prototype);
+
 assert(filter.getFrame != null, "getFrame wasn't set");
 assert(filter.child != null, "child isn't available to JavaScript");
 

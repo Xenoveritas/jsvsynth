@@ -11,6 +11,7 @@ list of "stuff that *will* get done."
       moving all object creation there)
 - [ ] Make the templates created come even remotely close to matching the class
       structure that [docs/api/jsvsynth_api.js] pretends exists.
+- [ ] Decide if it's `const type*` or `type const*` and be consistent about it
 - [ ] Add all the FIXME instances to this list
 - [ ] HTML5-style canvas API (hopefully using libcairo)
 - [ ] Investigating integrating with node.js (make a node.js module? make the

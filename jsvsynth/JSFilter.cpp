@@ -97,8 +97,10 @@ PVideoFrame __stdcall JSFilter::GetFrame(int n, IScriptEnvironment* env) {
 			v8::Handle<v8::Value> argv[] = { v8::Int32::New(n) };
 			v8::Handle<v8::Value> jsResult = f->CallAsFunction(self, 1, argv);
 			if (jsResult.IsEmpty()) {
-				// FIXME: Handle this
-				JSV_ERROR("Script threw an error\n");
+				// FIXME: Handle this better than dumping to the console
+				v8::String::Utf8Value exception(try_catch.Exception());
+				const char* exception_string = ToCString(exception);
+				JSV_ERROR("Script threw an error: %s\n", exception_string);
 			} else {
 				if (jsResult->IsObject() && JSVideoFrame::IsWrappedVideoFrame(jsResult->ToObject())) {
 					JSVideoFrame* jsFrame = JSVideoFrame::UnwrapVideoFrame(jsResult->ToObject());
