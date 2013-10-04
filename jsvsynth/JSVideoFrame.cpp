@@ -48,7 +48,7 @@ v8::Handle<v8::Object> JSVideoFrame::GetInstance(v8::Isolate* isolate) {
 		// Now that an instance has been retreived, mark our persistent weak so
 		// that we will be destroyed as appropriate when the frame goes out of
 		// scope.
-		instance.MakeWeak(isolate, this, DestroySelf<JSVideoFrame>);
+		instance.SetWeak(this, DestroySelf<JSVideoFrame>);
 		madeWeak = true;
 	}
 	return scope.Close(inst);

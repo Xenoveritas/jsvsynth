@@ -61,12 +61,11 @@
 
 namespace jsv {
 	template<class C>
-	void DestroySelf(v8::Isolate* isolate, v8::Persistent<v8::Object>* self, C* c) {
+	void DestroySelf(const v8::WeakCallbackData<v8::Object, C>& data) {
 		TRACE_MEM();
-		v8::HandleScope scope(isolate);
-		v8::Local<v8::Object>::New(isolate, (*self))->GetInternalField(0).Clear();
-		self->Dispose();
-		delete c;
+		v8::HandleScope scope(data.GetIsolate());
+		data.GetValue()->GetInternalField(0).Clear();
+		delete data.GetParameter();
 	}
 	template<class C>
 	C* UnwrapSelf(v8::Handle<v8::Object> obj) {

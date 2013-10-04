@@ -26,7 +26,7 @@
 #else
 
 #define TRACE(FORMAT, ...)			do { } while(0)
-#define TRACE_MEM(FORMAT, ...)		do { } while(0)
+#define TRACE_MEM()		do { } while(0)
 
 #endif
 

@@ -20,34 +20,66 @@ ECHO.
 ECHO V8 checkout complete. Attempting to checkout GYP...
 ECHO.
 
-:haveV8
-CD v8
+GOTO checkedOutV8
 
-IF EXIST build\gyp GOTO haveGyp
-svn co http://gyp.googlecode.com/svn/trunk build/gyp
+:haveV8
+
+ECHO.
+ECHO Updating V8...
+ECHO.
+
+svn update v8
+
+IF ERRORLEVEL 1 GOTO updateFailed
+
+:checkedOutV8
+
+IF EXIST v8\build\gyp GOTO haveGyp
+svn co http://gyp.googlecode.com/svn/trunk v8/build/gyp
 
 IF ERRORLEVEL 1 GOTO checkoutGypFailed
 
 :haveGyp
 
-IF EXIST third_party\cygwin GOTO haveChromiumCygwin
+ECHO.
+ECHO Attempting to update GYP...
+ECHO.
+
+svn update v8/build/gyp
+
+IF ERRORLEVEL 1 GOTO updateGypFailed
+
+IF EXIST v8\third_party\cygwin GOTO haveChromiumCygwin
 
 ECHO.
 ECHO Attempting to checkout the Chromium-provided Cygwin install...
 ECHO.
 
-svn co http://src.chromium.org/svn/trunk/deps/third_party/cygwin@66844 third_party/cygwin
+svn co http://src.chromium.org/svn/trunk/deps/third_party/cygwin@66844 v8/third_party/cygwin
 
 IF ERRORLEVEL 1 GOTO checkoutCygwinFailed
 
 :haveChromiumCygwin
 
-REM Move up a directory to keep our location consistent
-CD ..
+REM No need to update Chromium's cygwin, since we checked out a specific version
+
+IF EXIST v8\third_party\icu GOTO haveICU
+
+ECHO.
+ECHO Attempting to checkout the Chromium-provided ICU 4.6...
+ECHO.
+
+svn co https://src.chromium.org/chrome/trunk/deps/third_party/icu46@214189 third_party/icu
+
+IF ERRORLEVEL 1 GOTO checkoutICUFailed
+
+:haveICU
+
+REM No need to update ICU, because we checked out a specific version
 
 ECHO.
 REM  --------10--------20--------30--------40--------50--------60--------70--------80
-ECHO V8 and the various required bits have been checked out.
+ECHO V8 and the various required bits have been checked out/updated.
 ECHO.
 
 python --version >NUL 2>NUL
@@ -56,7 +88,7 @@ IF ERRORLEVEL 1 GOTO noPython
 
 ECHO Python was detected (via running "python --version"). Note that the build system
 ECHO requires Python 2.6+, but NOT the 3.0 branch. (So 2.7 is fine, but 3.0 will NOT
-ECHO work). This script doesn't attempt to detech the version.
+ECHO work). This script doesn't attempt to detect the version.
 
 GOTO done
 
@@ -91,10 +123,24 @@ ECHO Unable to checkout V8.
 
 EXIT /B 1
 
+:updateFailed
+
+ECHO.
+ECHO Unable to update V8.
+
+EXIT /B 1
+
 :checkoutGypFailed
 
 ECHO.
 ECHO Unable to checkout GYP, the build tool used to build V8.
+
+EXIT /B 1
+
+:updateGypFailed
+
+ECHO.
+ECHO Unable to update GYP, the build tool used to build V8.
 
 EXIT /B 1
 

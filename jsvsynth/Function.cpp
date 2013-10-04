@@ -38,7 +38,7 @@ v8::Handle<v8::Object> AVSFunction::NewInstance(v8::Handle<v8::ObjectTemplate> t
 	v8::Handle<v8::Object> obj = templ->NewInstance();
 	obj->SetInternalField(0, v8::External::New(this));
 	jsSelf.Reset(v8::Isolate::GetCurrent(), obj);
-	jsSelf.MakeWeak<AVSFunction>(this, DestroySelf);
+	jsSelf.SetWeak<AVSFunction>(this, DestroySelf);
 	return obj;
 }
 

@@ -36,7 +36,7 @@ void JSVideoInfo::Init(v8::Handle<v8::Object> obj) {
 	obj->SetInternalField(0, ext);
 	obj->SetHiddenValue(v8::String::New(JSCLIP_HIDDEN_PROP), v8::True());
 	instance.Reset(v8::Isolate::GetCurrent(), obj);
-	instance.MakeWeak<JSVideoInfo>(this, DestroySelf<JSVideoInfo>);
+	instance.SetWeak<JSVideoInfo>(this, DestroySelf<JSVideoInfo>);
 }
 
 JSVideoInfo::~JSVideoInfo() {
