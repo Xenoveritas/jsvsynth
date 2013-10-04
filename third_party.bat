@@ -69,7 +69,7 @@ ECHO.
 ECHO Attempting to checkout the Chromium-provided ICU 4.6...
 ECHO.
 
-svn co https://src.chromium.org/chrome/trunk/deps/third_party/icu46@214189 third_party/icu
+svn co https://src.chromium.org/chrome/trunk/deps/third_party/icu46@214189 v8/third_party/icu
 
 IF ERRORLEVEL 1 GOTO checkoutICUFailed
 
