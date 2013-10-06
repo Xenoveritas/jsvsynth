@@ -1,0 +1,44 @@
+[
+{
+"name":"V8",
+"type":"svn",
+"url":"http://v8.googlecode.com/svn/trunk",
+"dest":"v8"
+},
+{
+"name":"GYP",
+"type":"svn",
+"url":"http://gyp.googlecode.com/svn/trunk",
+"dest":"v8/build/gyp"
+},
+{
+"id":"ChromiumCygwin",
+"name":"Chromium-provided Cygwin install",
+"type":"svn",
+"url":"http://src.chromium.org/svn/trunk/deps/third_party/cygwin",
+"revision":66844,
+"dest":"v8/third_party/cygwin"
+},
+{
+"id":"ChromiumICU",
+"name":"Chromium-provided ICU 4.6",
+"type":"svn",
+"url":"https://src.chromium.org/chrome/trunk/deps/third_party/icu46",
+"revision":214189,
+"dest":"v8/third_party/icu"
+},
+{
+"name":"libcairo",
+"type":"git",
+"url":"git://anongit.freedesktop.org/git/cairo",
+"dest":"cairo",
+"skip":"Not is use yet."
+},
+{
+"name":"libpixman",
+"type":"git",
+"url":"git://anongit.freedesktop.org/git/pixman.git",
+"dest":"pixman",
+"skip":"This is required for Cairo which currently isn't in use."
+}
+]
