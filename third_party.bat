@@ -8,9 +8,6 @@ REM To update this file.
 svn --version >NUL 2>NUL
 IF ERRORLEVEL 1 GOTO noSVN
 
-git --version >NUL 2>NUL
-IF ERRORLEVEL 1 GOTO noGit
-
 IF EXIST v8 GOTO haveV8
 
 ECHO.
@@ -147,56 +144,6 @@ GOTO exitFailure
 
 :doneChromiumICU
 
-IF EXIST cairo GOTO doneLibcairo
-
-ECHO.
-ECHO Attempting to checkout libcairo...
-ECHO.
-
-git clone git://anongit.freedesktop.org/git/cairo cairo
-
-IF ERRORLEVEL 1 GOTO checkoutFailedLibcairo
-
-ECHO.
-ECHO libcairo checkout complete.
-ECHO.
-
-GOTO doneLibcairo
-
-:checkoutFailedLibcairo
-
-ECHO.
-ECHO Unable to checkout libcairo.
-
-GOTO exitFailure
-
-:doneLibcairo
-
-IF EXIST pixman GOTO doneLibpixman
-
-ECHO.
-ECHO Attempting to checkout libpixman...
-ECHO.
-
-git clone git://anongit.freedesktop.org/git/pixman.git pixman
-
-IF ERRORLEVEL 1 GOTO checkoutFailedLibpixman
-
-ECHO.
-ECHO libpixman checkout complete.
-ECHO.
-
-GOTO doneLibpixman
-
-:checkoutFailedLibpixman
-
-ECHO.
-ECHO Unable to checkout libpixman.
-
-GOTO exitFailure
-
-:doneLibpixman
-
 python --version >NUL 2>NUL
 
 IF ERRORLEVEL 1 GOTO noPython
@@ -226,13 +173,14 @@ ECHO.
 ECHO To build V8, you first need to run GYP:
 ECHO.
 ECHO     CD v8
-ECHO     python buildgyp_v8
+ECHO     python build\gyp_v8
 ECHO.
 ECHO And then the actual Visual Studio build:
 ECHO.
-ECHO     devenv /build Debug buildAll.sln
+ECHO     devenv /build Debug build\All.sln
 ECHO         OR
-ECHO     MSBuild buildall.sln /p:Configuration=Debug
+ECHO     MSBuild build\all.sln /p:Configuration=Debug
+ECHO.
 
 GOTO exitSuccess
 
@@ -244,13 +192,7 @@ ECHO (http://www.cygwin.com/) or from Apache Subversion's website
 ECHO (http://subversion.apache.org/).
 
 GOTO exitFailure
-:noGit
 
-ECHO Git was not located. A git client is required to download the third
-ECHO party libraries. A git client for Windows can be obtained through Cygwin
-ECHO (http://www.cygwin.com/).
-
-GOTO exitFailure
 :exitFailure
 EXIT /B 1
 :exitSuccess

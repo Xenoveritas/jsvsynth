@@ -16,3 +16,4 @@ list of "stuff that *will* get done."
 - [ ] HTML5-style canvas API (hopefully using libcairo)
 - [ ] Investigating integrating with node.js (make a node.js module? make the
       plugin work with node.js? I'm not sure)
+- [ ] Apparently V8 is replacing `v8::Handle` with `v8::Local`?

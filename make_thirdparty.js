@@ -193,13 +193,13 @@ out.writeEchoBlock('',
 	'To build V8, you first need to run GYP:',
 	'',
 	'    CD v8',
-	'    python build\gyp_v8',
+	'    python build\\gyp_v8',
 	'',
 	'And then the actual Visual Studio build:',
 	'',
-	'    devenv /build Debug build\All.sln',
+	'    devenv /build Debug build\\All.sln',
 	'        OR',
-	'    MSBuild build\all.sln /p:Configuration=Debug',
+	'    MSBuild build\\all.sln /p:Configuration=Debug',
 	'');
 out.writeln('', 'GOTO exitSuccess', '');
 
