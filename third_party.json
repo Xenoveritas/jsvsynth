@@ -3,13 +3,15 @@
 "name":"V8",
 "type":"svn",
 "url":"http://v8.googlecode.com/svn/trunk",
-"dest":"v8"
+"dest":"v8",
+"revision":17116
 },
 {
 "name":"GYP",
 "type":"svn",
 "url":"http://gyp.googlecode.com/svn/trunk",
-"dest":"v8/build/gyp"
+"dest":"v8/build/gyp",
+"revision":1750
 },
 {
 "id":"ChromiumCygwin",

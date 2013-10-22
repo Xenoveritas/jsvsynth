@@ -149,6 +149,7 @@ libs.forEach(function(lib) {
 		var update = false;
 		if ('revision' in lib) {
 			url += '@' + lib['revision'];
+			update = 'svn update -r ' + lib['revision'] + ' ' + dest;
 		} else {
 			update = 'svn update ' + dest;
 		}

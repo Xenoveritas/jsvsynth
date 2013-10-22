@@ -14,7 +14,7 @@ ECHO.
 ECHO Attempting to checkout V8...
 ECHO.
 
-svn checkout http://v8.googlecode.com/svn/trunk v8
+svn checkout http://v8.googlecode.com/svn/trunk@17116 v8
 
 IF ERRORLEVEL 1 GOTO checkoutFailedV8
 
@@ -37,7 +37,7 @@ ECHO.
 ECHO Updating V8...
 ECHO.
 
-svn update v8
+svn update -r 17116 v8
 
 IF ERRORLEVEL 1 GOTO updateFailedV8
 
@@ -57,7 +57,7 @@ ECHO.
 ECHO Attempting to checkout GYP...
 ECHO.
 
-svn checkout http://gyp.googlecode.com/svn/trunk v8/build/gyp
+svn checkout http://gyp.googlecode.com/svn/trunk@1750 v8/build/gyp
 
 IF ERRORLEVEL 1 GOTO checkoutFailedGYP
 
@@ -80,7 +80,7 @@ ECHO.
 ECHO Updating GYP...
 ECHO.
 
-svn update v8/build/gyp
+svn update -r 1750 v8/build/gyp
 
 IF ERRORLEVEL 1 GOTO updateFailedGYP
 
@@ -94,7 +94,7 @@ GOTO exitFailure
 
 :doneGYP
 
-IF EXIST v8/third_party/cygwin GOTO doneChromiumCygwin
+IF EXIST v8/third_party/cygwin GOTO haveChromiumCygwin
 
 ECHO.
 ECHO Attempting to checkout Chromium-provided Cygwin install...
@@ -117,9 +117,27 @@ ECHO Unable to checkout Chromium-provided Cygwin install.
 
 GOTO exitFailure
 
+:haveChromiumCygwin
+
+ECHO.
+ECHO Updating Chromium-provided Cygwin install...
+ECHO.
+
+svn update -r 66844 v8/third_party/cygwin
+
+IF ERRORLEVEL 1 GOTO updateFailedChromiumCygwin
+
+GOTO doneChromiumCygwin
+
+:updateFailedChromiumCygwin
+
+ECHO.
+ECHO Unable to update Chromium-provided Cygwin install.
+GOTO exitFailure
+
 :doneChromiumCygwin
 
-IF EXIST v8/third_party/icu GOTO doneChromiumICU
+IF EXIST v8/third_party/icu GOTO haveChromiumICU
 
 ECHO.
 ECHO Attempting to checkout Chromium-provided ICU 4.6...
@@ -140,6 +158,24 @@ GOTO doneChromiumICU
 ECHO.
 ECHO Unable to checkout Chromium-provided ICU 4.6.
 
+GOTO exitFailure
+
+:haveChromiumICU
+
+ECHO.
+ECHO Updating Chromium-provided ICU 4.6...
+ECHO.
+
+svn update -r 214189 v8/third_party/icu
+
+IF ERRORLEVEL 1 GOTO updateFailedChromiumICU
+
+GOTO doneChromiumICU
+
+:updateFailedChromiumICU
+
+ECHO.
+ECHO Unable to update Chromium-provided ICU 4.6.
 GOTO exitFailure
 
 :doneChromiumICU
