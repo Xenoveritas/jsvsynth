@@ -63,18 +63,19 @@ void InitV8() {
 	}
 	TRACE("Initializing V8 settings...\n");
 	v8::V8::InitializeICU();
+	// Apparently we no longer need to do this
 	// Pretend we're a command line program and set some crap for V8
 	// TODO (maybe): Somehow allow this to be set from AviSynth
-	int fake_argc = 2;
-	char **fake_argv = new char*[3];
-	fake_argv[0] = NULL;
+	//int fake_argc = 2;
+	//char **fake_argv = new char*[3];
+	//fake_argv[0] = NULL;
 	// We need to enable the typed arrays feature for our internal system
 	// FIXME: This is taken from d8.cc, but why are we strdup-ing the arguments
 	// we're sending to V8?
-	fake_argv[1] = _strdup("--harmony-typed-arrays");
-	v8::V8::SetFlagsFromCommandLine(&fake_argc, fake_argv, false);
-	free(fake_argv[1]);
-	delete[] fake_argv;
+	//fake_argv[1] = _strdup("--harmony-typed-arrays");
+	//v8::V8::SetFlagsFromCommandLine(&fake_argc, fake_argv, false);
+	//free(fake_argv[1]);
+	//delete[] fake_argv;
 	v8::V8::SetArrayBufferAllocator(new jsv::JSVAllocator());
 	v8Ready = true;
 }

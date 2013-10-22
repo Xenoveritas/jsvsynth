@@ -43,11 +43,10 @@ JSVEnvironment::JSVEnvironment(IScriptEnvironment* env) : avisynthEnv(env) {
 	// But now that we have the context, init some global things...
 	v8::Context::Scope context_scope(context);
 	CreateGlobals(context->Global());
-	// And create our templates.
+	// And create our (remaining) templates. (Those not created as part of the globals
+	// when populating the global object hierarchy.)
 	clipTemplate.Reset(isolate, JSClip::CreateObjectTemplate(context));
 	avsFuncWrapperTemplate.Reset(isolate, AVSFunction::CreateTemplate());
-	interleavedVideoFrameTemplate.Reset(isolate, JSInterleavedVideoFrame::CreateTemplate(isolate));
-	planarVideoFrameTemplate.Reset(isolate, JSPlanarVideoFrame::CreateTemplate(isolate));
 	simpleContextTemplate.Reset(isolate, JSSimpleRenderingContext::CreateTemplate(isolate));
 }
 
@@ -114,6 +113,10 @@ void DebugShowAlert(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
 #endif
 
+void ConstructVideoFrame(const v8::FunctionCallbackInfo<v8::Value> &args) {
+	TRACE("Construct video frame\n");
+}
+
 v8::Handle<v8::Context> JSVEnvironment::CreateContext(v8::Isolate* isolate) {
 	// Create a template for the global object.
 	v8::Handle<v8::ObjectTemplate> global = v8::ObjectTemplate::New();
@@ -124,24 +127,25 @@ v8::Handle<v8::Context> JSVEnvironment::CreateContext(v8::Isolate* isolate) {
 #ifdef _DEBUG
 	console->Set("alert", v8::FunctionTemplate::New(DebugShowAlert));
 #endif
-	global->Set("console", console);
+	global->Set(v8::String::New("console"), console, JSPROP_READONLY);
 	return v8::Context::New(isolate, NULL, global);
 }
 
 void JSVEnvironment::CreateGlobals(v8::Handle<v8::Object> global) {
 	v8::HandleScope scope(isolate);
+	// For the sake of being node-js like, make global a property on itself
+	global->Set(v8::String::New("global"), global);
 	// Wrap ourselves in an external. We'll be needed later.
-	v8::Handle<v8::External> wrapped = v8::External::New(this);
-	// Our first step is to create the template. We don't need to hang onto it
-	// because there's only ever the single object.
-	// FIXME: Because there's only one, I suspect we don't even need the template
-	v8::Handle<v8::ObjectTemplate> avisynthTemplate = v8::ObjectTemplate::New();
+	v8::Local<v8::External> wrapped = v8::External::New(this);
+	// Create the namespace object. Since this is created once and has no real
+	// "special" features, we just create it directly.
+	v8::Local<v8::Object> avisynth = v8::Object::New();
 	// Classes inside our "namespace"
-	avisynthTemplate->Set(v8::String::New("Filter"), JSFilter::CreateFilterConstructor(isolate));
+	avisynth->Set(v8::String::New("Filter"), JSFilter::CreateFilterConstructor(isolate)->GetFunction());
 	// Set constants on it
-	avisynthTemplate->Set(v8::String::New("PLANAR_Y"), v8::Int32::New(PLANAR_Y), v8::ReadOnly);
-	avisynthTemplate->Set(v8::String::New("PLANAR_U"), v8::Int32::New(PLANAR_U), v8::ReadOnly);
-	avisynthTemplate->Set(v8::String::New("PLANAR_V"), v8::Int32::New(PLANAR_V), v8::ReadOnly);
+	avisynth->Set(v8::String::New("PLANAR_Y"), v8::Int32::New(PLANAR_Y), JSPROP_READONLY);
+	avisynth->Set(v8::String::New("PLANAR_U"), v8::Int32::New(PLANAR_U), JSPROP_READONLY);
+	avisynth->Set(v8::String::New("PLANAR_V"), v8::Int32::New(PLANAR_V), JSPROP_READONLY);
 	/*
 	Not exported: Not needed for now (access is always unaligned, not sure it makes a difference)
 	avisynthTemplate->Set(v8::String::New("PLANAR_ALIGNED"), v8::Int32::New(PLANAR_ALIGNED), v8::ReadOnly);
@@ -150,30 +154,79 @@ void JSVEnvironment::CreateGlobals(v8::Handle<v8::Object> global) {
 	avisynthTemplate->Set(v8::String::New("PLANAR_V_ALIGNED"), v8::Int32::New(PLANAR_V_ALIGNED), v8::ReadOnly);
 	*/
 	// And set the two collections
-	v8::Handle<v8::ObjectTemplate> functionsTemplate = v8::ObjectTemplate::New();
+	v8::Local<v8::ObjectTemplate> functionsTemplate = v8::ObjectTemplate::New();
 	functionsTemplate->SetNamedPropertyHandler(JSGetAviSynthFunctions, JSSetAviSynthFunctions);
 	functionsTemplate->SetInternalFieldCount(1);
-	avisynthTemplate->Set(v8::String::New("functions"), functionsTemplate);
-	v8::Handle<v8::ObjectTemplate> variablesTemplate = v8::ObjectTemplate::New();
+	avisynth->Set(v8::String::New("functions"), functionsTemplate->NewInstance(), JSPROP_READONLY);
+	v8::Local<v8::ObjectTemplate> variablesTemplate = v8::ObjectTemplate::New();
 	variablesTemplate->SetNamedPropertyHandler(JSGetAviSynthVariables, JSSetAviSynthVariables);
 	variablesTemplate->SetInternalFieldCount(1);
-	avisynthTemplate->Set(v8::String::New("variables"), variablesTemplate);
-	avisynthTemplate->SetInternalFieldCount(1);
-	v8::Handle<v8::Object> avisynth = avisynthTemplate->NewInstance();
+	avisynth->Set(v8::String::New("variables"), variablesTemplate->NewInstance(), JSPROP_READONLY);
 	// Populate the internal collections
-	v8::Handle<v8::Object>::Cast(avisynth->Get(v8::String::New("functions")))->SetInternalField(0, wrapped);
-	v8::Handle<v8::Object>::Cast(avisynth->Get(v8::String::New("variables")))->SetInternalField(0, wrapped);
-	global->Set(v8::String::New("AviSynth"), avisynth);
-	v8::Handle<v8::Object> jsvsynth = v8::Object::New();
+	v8::Local<v8::Object>::Cast(avisynth->Get(v8::String::New("functions")))->SetInternalField(0, wrapped);
+	v8::Local<v8::Object>::Cast(avisynth->Get(v8::String::New("variables")))->SetInternalField(0, wrapped);
+	global->Set(v8::String::New("AviSynth"), avisynth, JSPROP_READONLY);
+	v8::Local<v8::Object> jsvsynth = v8::Object::New();
 	jsvsynth->Set(v8::String::New("version"), v8::String::New(JSVSYNTH_VERSION_STRING), v8::PropertyAttribute::ReadOnly);
-	global->Set(v8::String::New("JSVSynth"), jsvsynth);
-	v8::Handle<v8::ObjectTemplate> avsTemplate = v8::ObjectTemplate::New();
+	global->Set(v8::String::New("JSVSynth"), jsvsynth, JSPROP_READONLY);
+	v8::Local<v8::ObjectTemplate> avsTemplate = v8::ObjectTemplate::New();
 	// The object does have an internal field, a reference to this class.
 	avsTemplate->SetInternalFieldCount(1);
 	avsTemplate->SetNamedPropertyHandler(JSGetAviSynthAll, JSSetAviSynthAll);
 	v8::Handle<v8::Object> avs = avsTemplate->NewInstance();
 	avs->SetInternalField(0, wrapped);
-	global->Set(v8::String::New("avs"), avs);
+	global->Set(v8::String::New("avs"), avs, JSPROP_READONLY);
+	// Create the video frame object hierarchy here. We need to expose these to allow
+	// prototype inheritance on our actual objects - users should be allowed to set
+	// things on the prototypes for the objects and have that work.
+	v8::Local<v8::FunctionTemplate> videoFrame = v8::FunctionTemplate::New(ConstructVideoFrame);
+	v8::Local<v8::String> name = v8::String::New("VideoFrame");
+	videoFrame->SetClassName(name);
+	avisynth->Set(name, videoFrame->GetFunction(), JSPROP_READONLY);
+	v8::Local<v8::FunctionTemplate> ileavedVideoFrame = JSInterleavedVideoFrame::CreateTemplate(isolate);
+	name = v8::String::New("InterleavedVideoFrame");
+	ileavedVideoFrame->Inherit(videoFrame);
+	avisynth->Set(name, ileavedVideoFrame->GetFunction(), JSPROP_READONLY);
+	interleavedVideoFrameCons.Reset(isolate, ileavedVideoFrame->GetFunction());
+	v8::Local<v8::FunctionTemplate> planarVideoFrame = JSPlanarVideoFrame::CreateTemplate(isolate);
+	name = v8::String::New("PlanarVideoFrame");
+	planarVideoFrame->Inherit(videoFrame);
+	avisynth->Set(name, planarVideoFrame->GetFunction(), JSPROP_READONLY);
+	planarVideoFrameCons.Reset(isolate, planarVideoFrame->GetFunction());
+	CreateColorSpaces(avisynth);
+}
+
+void ConstructColorSpace(const v8::FunctionCallbackInfo<v8::Value> &args) {
+	if (args.Length() >= 1) {
+		// Convert whatever the first argument is to a string and use that as the name.
+		args.This()->Set(v8::String::New("name"), args[0]->ToString());
+	}
+}
+
+void CreateColorSpace(const char* name, v8::Local<v8::Function> ctor, v8::Local<v8::Array> colorspaces) {
+	v8::Local<v8::String> v8Name = v8::String::New(name);
+	v8::Local<v8::Object> instance = ctor->NewInstance(1, (v8::Handle<v8::Value>*)(&v8Name));
+	ctor->Set(v8Name, instance, JSPROP_READONLY);
+	colorspaces->Set(colorspaces->Length(), instance);
+}
+
+void JSVEnvironment::CreateColorSpaces(v8::Handle<v8::Object> avs) {
+	// Create the color space function
+	v8::Local<v8::FunctionTemplate> t = v8::FunctionTemplate::New(ConstructColorSpace);
+	t->SetClassName(v8::String::New("ColorSpace"));
+	v8::Local<v8::Function> ctor = t->GetFunction();
+	avs->Set(v8::String::New("ColorSpace"), ctor, JSPROP_READONLY);
+	// The function itself has a bunch of constants on it that are basically
+	// static versions of itself. Each instance is placed in the colorspaces array:
+	v8::Local<v8::Array> colorspaces = v8::Array::New(4);
+	avs->Set(v8::String::New("ColorSpaces"), colorspaces, JSPROP_READONLY);
+	CreateColorSpace("RGB32", ctor, colorspaces);
+	CreateColorSpace("RGB24", ctor, colorspaces);
+	CreateColorSpace("YUY2", ctor, colorspaces);
+	CreateColorSpace("YV12", ctor, colorspaces);
+	// For our non-US friends:
+	avs->Set(v8::String::New("ColourSpace"), ctor, JSPROP_READONLY);
+	avs->Set(v8::String::New("ColourSpaces"), colorspaces, JSPROP_READONLY);
 }
 
 //
@@ -223,16 +276,17 @@ v8::Handle<v8::Object> JSVEnvironment::WrapClip(PClip clip) {
 }
 
 v8::Handle<v8::Object> JSVEnvironment::WrapVideoFrame(PVideoFrame frame, const VideoInfo& vi) {
+	// Go ahead and stack-alloc this:
+	ProtoVideoFrame frameData(frame, vi);
+	v8::Handle<v8::Value> arg = v8::External::New(&frameData);
 	// Sadly we need the video info to know which type of video access to provide.
-	JSVideoFrame* wrappedFrame;
 	if (vi.IsPlanar()) {
 		TRACE("Wrapping planar video frame...\n");
-		wrappedFrame = new JSPlanarVideoFrame(frame, vi, isolate, v8::Local<v8::ObjectTemplate>::New(isolate, planarVideoFrameTemplate));
+		return v8::Local<v8::Function>::New(isolate, planarVideoFrameCons)->NewInstance(1, &arg);
 	} else {
-		wrappedFrame = new JSInterleavedVideoFrame(frame, vi, isolate, v8::Local<v8::ObjectTemplate>::New(isolate, interleavedVideoFrameTemplate));
+		TRACE("Wrapping interleaved video frame...\n");
+		return v8::Local<v8::Function>::New(isolate, interleavedVideoFrameCons)->NewInstance(1, &arg);
 	}
-	TRACE("Returning wrapped frame.\n");
-	return wrappedFrame->GetInstance(isolate);
 }
 
 void JSVEnvironment::JSGetAviSynthAll(v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info) {

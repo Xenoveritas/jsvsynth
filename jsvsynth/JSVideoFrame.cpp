@@ -25,33 +25,22 @@
 
 namespace jsv {
 
-JSVideoFrame::JSVideoFrame(PVideoFrame aFrame, const VideoInfo& aVI, v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> templ)
-	: frame(aFrame), vi(aVI), madeWeak(false), released(false) {
+JSVideoFrame::JSVideoFrame(PVideoFrame aFrame, const VideoInfo& aVI, v8::Isolate* isolate, v8::Local<v8::Object> aInstance)
+	: frame(aFrame), vi(aVI), released(false) {
 	TRACE("JSVideoFrame::JSVideoFrame\n");
-	v8::HandleScope scope(isolate);
 	// Create a new instance
-	TRACE("Creating new instance...\n");
-	v8::Handle<v8::Object> inst = v8::Local<v8::ObjectTemplate>::New(isolate, templ)->NewInstance();
-	inst->SetHiddenValue(v8::String::New(JSVIDEOFRAME_HIDDEN_PROP), v8::True());
-	instance.Reset(isolate, inst);
-	madeWeak = false;
+	aInstance->SetHiddenValue(v8::String::New(JSVIDEOFRAME_HIDDEN_PROP), v8::True());
+	instance.Reset(isolate, aInstance);
+	// Make the instance weak so we get cleaned up when it dies
+	instance.SetWeak(this, DestroySelf<JSVideoFrame>);
 }
 
 JSVideoFrame::~JSVideoFrame() {
 	instance.Dispose();
 }
 
-v8::Handle<v8::Object> JSVideoFrame::GetInstance(v8::Isolate* isolate) {
-	v8::HandleScope scope(isolate);
-	v8::Handle<v8::Object> inst = v8::Local<v8::Object>::New(isolate, instance);
-	if (!madeWeak) {
-		// Now that an instance has been retreived, mark our persistent weak so
-		// that we will be destroyed as appropriate when the frame goes out of
-		// scope.
-		instance.SetWeak(this, DestroySelf<JSVideoFrame>);
-		madeWeak = true;
-	}
-	return scope.Close(inst);
+v8::Local<v8::Object> JSVideoFrame::GetInstance(v8::Isolate* isolate) {
+	return v8::Local<v8::Object>::New(isolate, instance);
 }
 
 bool JSVideoFrame::IsWrappedVideoFrame(v8::Handle<v8::Object> obj) {
@@ -125,9 +114,37 @@ v8::Handle<v8::ArrayBuffer> JSVideoFrame::WrapData(v8::Isolate* isolate, BYTE* d
 	return scope.Close(result);
 }
 
-JSInterleavedVideoFrame::JSInterleavedVideoFrame(PVideoFrame aFrame, const VideoInfo& aVI, v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> templ)
-	: JSVideoFrame(aFrame, aVI, isolate, templ), simpleContext(NULL) {
-	PopulateInstance(v8::Local<v8::Object>::New(isolate, instance));
+// The video constructor code is basically identical for both frame types, so
+// this is a template:
+template<class C>
+void JSVideoFrameConstructor(const v8::FunctionCallbackInfo<v8::Value> &args) {
+	TRACE("Attempt to construct video frame\n");
+	if (!args.IsConstructCall()) {
+		TRACE("Ignoring direct call to constructor.\n");
+		// I'm not sure if this would get called in a "super" constructor if something were
+		// to try and "extend" a video frame.
+		return;
+	}
+	if (args.Length() == 1) {
+		// In this case, the argument must be an external marking this as an
+		// "internal" call to create a video frame.
+		if (args[0]->IsExternal()) {
+			// The external is a ProtoVideoFrame and is used to construct our "real" value.
+			ProtoVideoFrame* proto = UnwrapExternal<ProtoVideoFrame>(args[0]);
+			// I guess you can use "duck" typing in C++!
+			new C(proto->frame, proto->vi, args.GetIsolate(), args.This());
+			return;
+		}
+	} else if (args.Length() == 3) {
+		// Allowed arguments for this are:
+	}
+	// Eventually, we may allow creating a frame in this fashion. For now:
+	v8::ThrowException(v8::Exception::Error(v8::String::New("Cannot construct video frame directly")));
+}
+
+JSInterleavedVideoFrame::JSInterleavedVideoFrame(PVideoFrame aFrame, const VideoInfo& aVI, v8::Isolate* isolate, v8::Local<v8::Object> aInstance)
+	: JSVideoFrame(aFrame, aVI, isolate, aInstance), simpleContext(NULL) {
+	PopulateInstance(aInstance);
 }
 
 JSInterleavedVideoFrame::~JSInterleavedVideoFrame() {
@@ -176,7 +193,6 @@ JSSimpleRenderingContext* JSInterleavedVideoFrame::GetSimpleContext() {
 	}
 }
 
-
 void JSInterleavedVideoFrame::JSRelease(const v8::FunctionCallbackInfo<v8::Value>& info) {
 	JSInterleavedVideoFrame* self = UnwrapSelf<JSInterleavedVideoFrame>(info.This());
 	self->Release();
@@ -221,21 +237,22 @@ bool JSInterleavedVideoFrame::MakeWriteable(v8::Isolate* isolate) {
 	return true;
 }
 
-v8::Handle<v8::ObjectTemplate> JSInterleavedVideoFrame::CreateTemplate(v8::Isolate* isolate) {
+v8::Handle<v8::FunctionTemplate> JSInterleavedVideoFrame::CreateTemplate(v8::Isolate* isolate) {
 	v8::HandleScope scope(isolate);
-	v8::Handle<v8::ObjectTemplate> templ = v8::ObjectTemplate::New();
+	v8::Local<v8::FunctionTemplate> func = v8::FunctionTemplate::New(JSVideoFrameConstructor<JSInterleavedVideoFrame>);
+	func->SetClassName(v8::String::New("InterleavedVideoFrame"));
+	v8::Handle<v8::ObjectTemplate> templ = func->InstanceTemplate();
 	templ->Set(JSPROP_NAME("release"), v8::FunctionTemplate::New(JSRelease), JSPROP_READONLY);
 	templ->Set(JSPROP_NAME("planar"), v8::False(), JSPROP_READONLY);
 	templ->Set(JSPROP_NAME("interleaved"), v8::True(), JSPROP_READONLY);
 	templ->SetAccessor(JSPROP_NAME("data"), JSGetData);
 	CreateTemplateDefaultFields(templ);
 	templ->SetInternalFieldCount(1);
-	return scope.Close(templ);
+	return scope.Close(func);
 }
 
-JSPlanarVideoFrame::JSPlanarVideoFrame(PVideoFrame aFrame, const VideoInfo& vi, v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> templ)
-	: JSVideoFrame(aFrame, vi, isolate, templ) {
-	v8::HandleScope scope(isolate);
+JSPlanarVideoFrame::JSPlanarVideoFrame(PVideoFrame aFrame, const VideoInfo& vi, v8::Isolate* isolate, v8::Local<v8::Object> aInstance)
+	: JSVideoFrame(aFrame, vi, isolate, aInstance) {
 	PopulateInstance(v8::Local<v8::Object>::New(isolate, instance));
 }
 
@@ -321,9 +338,10 @@ void JSPlanarVideoFrame::MakeWriteable(v8::Isolate* isolate) {
 	}
 }
 
-v8::Handle<v8::ObjectTemplate> JSPlanarVideoFrame::CreateTemplate(v8::Isolate* isolate) {
+v8::Handle<v8::FunctionTemplate> JSPlanarVideoFrame::CreateTemplate(v8::Isolate* isolate) {
 	v8::HandleScope scope(isolate);
-	v8::Handle<v8::ObjectTemplate> templ = v8::ObjectTemplate::New();
+	v8::Local<v8::FunctionTemplate> func = v8::FunctionTemplate::New(JSVideoFrameConstructor<JSPlanarVideoFrame>);
+	v8::Local<v8::ObjectTemplate> templ = func->InstanceTemplate();
 	templ->Set(v8::String::New("release"), v8::FunctionTemplate::New(JSRelease));
 	templ->Set(v8::String::New("planar"), v8::True(), v8::PropertyAttribute::ReadOnly);
 	templ->Set(v8::String::New("interleaved"), v8::False(), v8::PropertyAttribute::ReadOnly);
@@ -340,7 +358,7 @@ v8::Handle<v8::ObjectTemplate> JSPlanarVideoFrame::CreateTemplate(v8::Isolate* i
 	vPlane->SetAccessor(v8::String::New("data"), JSGetDataV);
 	vPlane->SetInternalFieldCount(1);
 	templ->Set("v", vPlane);
-	return scope.Close(templ);
+	return scope.Close(func);
 }
 
 };

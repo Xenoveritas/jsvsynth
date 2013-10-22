@@ -35,7 +35,7 @@
  * variables in AviSynth, you can only get and set values through this
  * collection.
  */
-var avs;
+var avs = {};
 
 /**
  * The primary namespace for AviSynth-related builtins.
@@ -76,6 +76,56 @@ AviSynth.functions = {};
  * this collection.
  */
 AviSynth.variables = {};
+
+/**
+ * An array of available color spaces within AviSynth. Each object is a
+ * {@linkcode AviSynth.ColorSpace} object.
+ */
+AviSynth.ColorSpaces = [];
+
+/**
+ * A color space. Note that while you can construct new instances of this
+ * object, there is no point in doing so, as only the built-in color space
+ * instances actually do anything.
+ * <p>
+ * (Actually, strictly speaking, the above is not true: any place that JSVSynth
+ * requires a <code>AviSynth.ColorSpace</code>, it's actually looking for either
+ * a string or an object which contains a property called <code>name</code> that
+ * contains the name of the color space.)
+ */
+AviSynth.ColorSpace = function() { };
+
+/**
+ * The name of the colorspace. This is a string, and is one of:
+ * <ul>
+ * <li><code>RGB32</code></li>
+ * <li><code>RGB24</code></li>
+ * <li><code>YUY2</code></li>
+ * <li><code>YV12</code></li>
+ * </ul>
+ * @readonly
+ */
+AviSynth.ColorSpace.prototype.name = "";
+
+/**
+ * The RGB32 color space.
+ */
+AviSynth.ColorSpace.RGB32 = new AviSynth.ColorSpace();
+
+/**
+ * The RGB24 color space.
+ */
+AviSynth.ColorSpace.RGB24 = new AviSynth.ColorSpace();
+
+/**
+ * The YUY2 color space.
+ */
+AviSynth.ColorSpace.YUY2 = new AviSynth.ColorSpace();
+
+/**
+ * The YV12 color space.
+ */
+AviSynth.ColorSpace.YV12 = new AviSynth.ColorSpace();
 
 /**
  * This functions as the base class for both {@link AviSynth.Clip} and
@@ -252,11 +302,12 @@ AviSynth.VideoInfo.prototype = {
 	hasVideo: false,
 	/**
 	 * The exact colorspace the clip is in. (NOTE: A future version will likely
-	 * replace the string return value with an actual object.)
+	 * replace the string return value with the corresponding
+	 * {@linkcode AviSynth.ColorSpace} object.)
 	 * @type string
 	 * @readonly
 	 */
-	colorSpace: false,
+	colorSpace: "",
 	frameRatio: [ 0, 0 ]
 };
 
@@ -291,7 +342,12 @@ AviSynth.Clip.prototype.getFrame = function(frame) { };
  * Note that because the child is <em>required</em> to be present (the video
  * information must be populated) - you can't extend this class in JavaScript.
  * <p>
- * FIXME: it should be possible to extend this class
+ * FIXME: it should be possible to extend this class. This will probably be done
+ * by setting "defaults" for the video information. The entire set of video
+ * information required is basically the same as those taken by AviSynth's
+ * <code>BlankClip<code> filter: int "length", int "width", int "height", string "pixel_type",
+   float "fps", int "fps_denominator", int "audio_rate", int "channels",
+   string "sample_type", int "color", int "color_yuv"
  * @constructor
  * @param {AviSynth.VideoInfo} child
  *                  the source filter to get frames from
@@ -304,7 +360,8 @@ AviSynth.Filter = function(child) { };
 AviSynth.Filter.prototype = new AviSynth.VideoInfo();
 
 /**
- * The child source of frames.
+ * The child source of frames. If this was created without a child clip, this
+ * will return {@code null}.
  * @type AviSynth.VideoInfo
  * @readonly
  */

@@ -84,6 +84,7 @@ private:
 	JSFunction* WrapFunction(v8::Handle<v8::Function> func);
 	v8::Handle<v8::Context> CreateContext(v8::Isolate* isolate);
 	void CreateGlobals(v8::Handle<v8::Object> global);
+	void CreateColorSpaces(v8::Handle<v8::Object> avisynth);
 	JS_NAMED_PROPERTY_DECL(AviSynthAll);
 	JS_NAMED_PROPERTY_DECL(AviSynthVariables);
 	JS_NAMED_PROPERTY_DECL(AviSynthFunctions);
@@ -92,8 +93,8 @@ private:
 	v8::Persistent<v8::Context> scriptingContext;
 	v8::Persistent<v8::ObjectTemplate> clipTemplate;
 	v8::Persistent<v8::ObjectTemplate> avsFuncWrapperTemplate;
-	v8::Persistent<v8::ObjectTemplate> interleavedVideoFrameTemplate;
-	v8::Persistent<v8::ObjectTemplate> planarVideoFrameTemplate;
+	v8::Persistent<v8::Function> interleavedVideoFrameCons;
+	v8::Persistent<v8::Function> planarVideoFrameCons;
 	v8::Persistent<v8::ObjectTemplate> simpleContextTemplate;
 	/**
 	 * A list of allocated memory that we can't delete until AviSynth closes.

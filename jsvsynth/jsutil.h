@@ -68,8 +68,14 @@ namespace jsv {
 		delete data.GetParameter();
 	}
 	template<class C>
-	C* UnwrapSelf(v8::Handle<v8::Object> obj) {
-		v8::Handle<v8::External> ext = v8::Handle<v8::External>::Cast(obj->GetInternalField(0));
+	C* UnwrapSelf(v8::Local<v8::Object> obj) {
+		v8::Local<v8::External> ext = v8::Local<v8::External>::Cast(obj->GetInternalField(0));
+		void* ptr = ext->Value();
+		return static_cast<C*>(ptr);
+	}
+	template<class C>
+	C* UnwrapExternal(v8::Local<v8::Value> v) {
+		v8::Local<v8::External> ext = v8::Local<v8::External>::Cast(v);
 		void* ptr = ext->Value();
 		return static_cast<C*>(ptr);
 	}

@@ -24,11 +24,25 @@ namespace jsv {
 
 class JSSimpleRenderingContext;
 
+/**
+ * This class is used to pass the required video information to the JavaScript
+ * constructors. It really only needs to exist to allow const to remain in
+ * effect on the VideoInfo struct, otherwise we could pass the two values in
+ * directly.
+ */
+class ProtoVideoFrame {
+public:
+	ProtoVideoFrame(PVideoFrame aFrame, const VideoInfo& aVi) :
+		frame(aFrame), vi(aVi) { }
+	PVideoFrame frame;
+	const VideoInfo& vi;
+};
+
 class JSVideoFrame {
 public:
-	JSVideoFrame(PVideoFrame frame, const VideoInfo& vi, v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> templ);
+	JSVideoFrame(PVideoFrame frame, const VideoInfo& vi, v8::Isolate* isolate, v8::Local<v8::Object> instance);
 	virtual ~JSVideoFrame();
-	v8::Handle<v8::Object> GetInstance(v8::Isolate* isolate);
+	v8::Local<v8::Object> GetInstance(v8::Isolate* isolate);
 	/**
 	 * Release the video frame data back to AviSynth. Note: it should always be
 	 * safe to call this function multiple times.
@@ -47,8 +61,8 @@ public:
 	 */
 	static void CreateTemplateDefaultFields(v8::Handle<v8::ObjectTemplate>);
 protected:
-	v8::Handle<v8::ArrayBuffer> WrapData(v8::Isolate* isolate, BYTE* data, int length);
 	v8::Persistent<v8::Object> instance;
+	v8::Handle<v8::ArrayBuffer> WrapData(v8::Isolate* isolate, BYTE* data, int length);
 	PVideoFrame frame;
 	const VideoInfo& vi;
 	bool released;
@@ -56,7 +70,6 @@ private:
 	// JS implementations of getContext and getSimpleContext
 	static void JSGetContext(const v8::FunctionCallbackInfo<v8::Value>&);
 	static void JSGetSimpleContext(const v8::FunctionCallbackInfo<v8::Value>&);
-	bool madeWeak;
 };
 
 /**
@@ -65,11 +78,12 @@ private:
  */
 class JSInterleavedVideoFrame : public JSVideoFrame {
 public:
-	JSInterleavedVideoFrame(PVideoFrame frame, const VideoInfo& vi, v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> templ);
+	// FIXME: Can this be made private? You now create frames via the JavaScript constructor
+	JSInterleavedVideoFrame(PVideoFrame frame, const VideoInfo& vi, v8::Isolate* isolate, v8::Local<v8::Object> instance);
 	~JSInterleavedVideoFrame();
 	virtual void Release();
 	virtual JSSimpleRenderingContext* GetSimpleContext();
-	static v8::Handle<v8::ObjectTemplate> CreateTemplate(v8::Isolate* isolate);
+	static v8::Handle<v8::FunctionTemplate> CreateTemplate(v8::Isolate* isolate);
 private:
 	void PopulateInstance(v8::Handle<v8::Object> inst);
 	/**
@@ -77,6 +91,7 @@ private:
 	 * successfully, false if they were not.
 	 */
 	bool MakeWriteable(v8::Isolate* isolate);
+	static void JSConstructor(const v8::FunctionCallbackInfo<v8::Value>&);
 	static void JSRelease(const v8::FunctionCallbackInfo<v8::Value>&);
 	static void JSGetData(v8::Local<v8::String>, const v8::PropertyCallbackInfo<v8::Value>&);
 	v8::Persistent<v8::ArrayBuffer> dataInstance;
@@ -88,15 +103,17 @@ private:
  */
 class JSPlanarVideoFrame : public JSVideoFrame {
 public:
-	JSPlanarVideoFrame(PVideoFrame frame, const VideoInfo& vi, v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> templ);
+	// FIXME: Can this be made private? You now create frames via the JavaScript constructor
+	JSPlanarVideoFrame(PVideoFrame frame, const VideoInfo& vi, v8::Isolate* isolate, v8::Local<v8::Object> instance);
 	~JSPlanarVideoFrame();
 	virtual void Release();
 	virtual JSSimpleRenderingContext* GetSimpleContext() { return NULL; }
-	static v8::Handle<v8::ObjectTemplate> CreateTemplate(v8::Isolate* isolate);
+	static v8::Handle<v8::FunctionTemplate> CreateTemplate(v8::Isolate* isolate);
 private:
 	void PopulateInstance(v8::Handle<v8::Object> inst);
 	void PopulatePlaneInstance(v8::Handle<v8::Object> inst, int plane);
 	void MakeWriteable(v8::Isolate* isolate);
+	static void JSConstructor(const v8::FunctionCallbackInfo<v8::Value>&);
 	static void JSRelease(const v8::FunctionCallbackInfo<v8::Value>&);
 	static void JSGetContext(const v8::FunctionCallbackInfo<v8::Value>&);
 	static void JSGetDataY(v8::Local<v8::String>, const v8::PropertyCallbackInfo<v8::Value>&);
