@@ -138,7 +138,7 @@ A `third_party.bat` file is provided to help automate the process of downloading
 the third party software. Since there are four separate repositories you need to
 grab to get everything up and running under Windows, and since the
 `third_party.bat` file keeps everything to the same versions as the original
-code, you should probably stick with using that. However, You can also manually
+code, you should probably stick with using that. However, you can also manually
 grab V8 into the "v8" directory by running the following command:
 
     svn checkout http://v8.googlecode.com/svn/trunk v8

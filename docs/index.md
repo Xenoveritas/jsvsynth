@@ -1,7 +1,9 @@
 JSVSynth User Documentation
 ===========================
 
-This documentation describes using JSVSynth from within AviSynth.
+This documentation describes using JSVSynth from within AviSynth. For a
+complete list of classes and objects available from JavaScript, [check out the
+complete API documentation](api/index.html).
 
 Before you can use the plugin, you'll need to load it. This is a "regular"
 AviSynth plugin (not a C plugin), so you use:
@@ -37,14 +39,20 @@ var baz = avs.foo + avs['bar']
 
 AviSynth functions can also be accessed that way. Note that all AviSynth
 filters are "functions." If you really wanted to, you can even access the
-JavaScript plugin through `avs`, although I wouldn't recommend it. (After all,
-`eval` is available.)
+JavaScript filter provided by JSVSynth through `avs`, although I wouldn't
+recommend it. (After all, `eval` is available.)
 
 JSVSynth API
 ------------
 
-The following are available in the JavaScript environment:
+The [full documentation of the AviSynth API](api/index.html) is available as a
+set of jsdoc pages. However, some more specific documentation is also available:
 
-* [`AviSynth.Filter`](javascript_filter.md) - write a filter using JavaScript
-* [`AviSynth.VideoFrame`](javascript_videoframe.md) - how to access a video
-  frame's data
+* [JavaScript Environment](environment.md) - what's available to JavaScript
+  inside an AVS file
+* [Exporting Functions](exporting_functions.md) - how to export a JavaScript
+  function so that it can be used from AviSynth
+* [Writing a JavaScript Filter](javascript_filter.md) - how to write a custom
+  AviSynth filter directly in JavaScript
+* [SimpleRenderingContext](javascript_simplerenderingcontext.md) - using a
+  SimpleRenderingContext to draw on a frame

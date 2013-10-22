@@ -172,6 +172,7 @@ void JSInterleavedVideoFrame::Release() {
 void JSInterleavedVideoFrame::PopulateInstance(v8::Handle<v8::Object> inst) {
 	inst->Set(JSPROP_NAME("pitch"), v8::Int32::New(frame->GetPitch()), JSPROP_READONLY);
 	inst->Set(JSPROP_NAME("rowSize"), v8::Int32::New(frame->GetRowSize()), JSPROP_READONLY);
+	inst->Set(JSPROP_NAME("width"), v8::Int32::New(frame->GetRowSize() / vi.BytesFromPixels(1)), JSPROP_READONLY);
 	inst->Set(JSPROP_NAME("height"), v8::Int32::New(frame->GetHeight()), JSPROP_READONLY);
 	inst->Set(JSPROP_NAME("bitsPerPixel"), v8::Int32::New(vi.BitsPerPixel()), JSPROP_READONLY);
 	inst->Set(JSPROP_NAME("bytesPerPixel"), v8::Int32::New(vi.BytesFromPixels(1)), JSPROP_READONLY);
@@ -274,6 +275,7 @@ void JSPlanarVideoFrame::PopulateInstance(v8::Handle<v8::Object> inst) {
 void JSPlanarVideoFrame::PopulatePlaneInstance(v8::Handle<v8::Object> inst, int plane) {
 	inst->Set(v8::String::New("pitch"), v8::Int32::New(frame->GetPitch(plane)), v8::PropertyAttribute::ReadOnly);
 	inst->Set(v8::String::New("rowSize"), v8::Int32::New(frame->GetRowSize(plane)), v8::PropertyAttribute::ReadOnly);
+	inst->Set(v8::String::New("width"), v8::Int32::New(frame->GetRowSize(plane) / vi.BytesFromPixels(1)), v8::PropertyAttribute::ReadOnly);
 	inst->Set(v8::String::New("height"), v8::Int32::New(frame->GetHeight(plane)), v8::PropertyAttribute::ReadOnly);
 	inst->Set(v8::String::New("bitsPerPixel"), v8::Int32::New(vi.BitsPerPixel()), v8::PropertyAttribute::ReadOnly);
 	inst->Set(v8::String::New("bytesPerPixel"), v8::Int32::New(vi.BytesFromPixels(1)), v8::PropertyAttribute::ReadOnly);

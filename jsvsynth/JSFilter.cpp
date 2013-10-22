@@ -90,7 +90,6 @@ PVideoFrame __stdcall JSFilter::GetFrame(int n, IScriptEnvironment* env) {
 		// Start a try/catch block
 		v8::TryCatch try_catch;
 		// Compile the script
-		// FIXME: Any sort of error handling
 		if (jsGetFrame->IsFunction()) {
 			// Invoke with the current frame number
 			v8::Handle<v8::Function> f = v8::Handle<v8::Function>::Cast(jsGetFrame);
@@ -101,6 +100,8 @@ PVideoFrame __stdcall JSFilter::GetFrame(int n, IScriptEnvironment* env) {
 				v8::String::Utf8Value exception(try_catch.Exception());
 				const char* exception_string = ToCString(exception);
 				JSV_ERROR("Script threw an error: %s\n", exception_string);
+				// Throwing an error in AviSynth will appropriately create an error frame
+				env->ThrowError("JavaScript threw exception: %s", exception_string);
 			} else {
 				if (jsResult->IsObject() && JSVideoFrame::IsWrappedVideoFrame(jsResult->ToObject())) {
 					JSVideoFrame* jsFrame = JSVideoFrame::UnwrapVideoFrame(jsResult->ToObject());
@@ -109,12 +110,12 @@ PVideoFrame __stdcall JSFilter::GetFrame(int n, IScriptEnvironment* env) {
 				} else {
 					v8::String::AsciiValue asciiResult(jsResult);
 					JSV_ERROR("getFrame returned %s instead of a frame!\n", asciiResult);
-					// FIXME: Handle this
+					env->ThrowError("getFrame returned %s instead of a frame!\n", asciiResult);
 				}
 			}
 		} else {
 			JSV_ERROR("getFrame isn't a function!\n");
-			// FIXME: Handle this
+			env->ThrowError("getFrame isn't a function!");
 		}
 	}
 	scriptingEnvironment->ExitIsolate();

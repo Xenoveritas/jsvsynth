@@ -17,6 +17,14 @@ code, pre {
 	border-radius: 3px;
 }
 
+a, a code {
+	color: #00F;
+}
+
+a:visited, a:visited code {
+	color: #A2F;
+}
+
 code {
 	background-color: #F7F7F7;
 	border: solid 1px #e1e1e8;

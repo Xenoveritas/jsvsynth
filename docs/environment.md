@@ -4,21 +4,20 @@ JavaScript Environment
 This document describes the contents of the JavaScript environment avaiable
 when running within JSVSynth.
 
+The following documentation is a bit speculative. Check out the
+[AviSynth object documentation](api/AviSynth.html) for the most up-to-date
+version.
+
 AviSynth
 --------
 
 The `AviSynth` object is effectively the "namespace" for various AviSynth
 functions and contains the following:
 
-* `AviSynth.ColorSpace` - a collection that describes the existing colorspaces
-  in AviSynth.
-* `AviSynth.createVideoFrame(colorspace, width, height)` - function for creating
-a raw frame.
+* `AviSynth.ColorSpace` - a color space inside AviSynth, see
+  [AviSynth.ColorSpace](api/AviSynth.ColorSpace.html)
 * `AviSynth.Filter` - constructor for creating custom AviSynth filters, see
   the "Filter" section below for details
-* `AviSynth.PLANAR_Y` - constant for the Y plane, see "VideoFrame"
-* `AviSynth.PLANAR_U` - constant for the U plane, see "VideoFrame"
-* `AviSynth.PLANAR_V` - constant for the V plane, see "VideoFrame"
 * `AviSynth.VideoFrame` - class that provides direct access to video frame data.
 Instances can be created directly in order to create blank frames or be pulled
 from an existing clip.
@@ -108,22 +107,3 @@ access a frame but do not return it to the filter, you should manually
 `release()` it when you're done with it. (If you don't, V8 should eventually
 free the video frame when it gets garbage collected. Unless you hold on to a
 reference. Don't do that.)
-
-ColorSpace
-----------
-
-The ColorSpace object contains the following constants:
-
-* `BGR24` - 24 bit RGB
-* `BGR32` - 32 bit RGB
-* `YUY2` - YUY2
-* `YV12` - YV12
-* `I420` - Essentially YV12, but ... different. This is essentially a "secret"
-internal AviSynth colorspace that isn't reflected by the "standard" AviSynth
-scripting langauge. `IsYV12(clip)` will return `True` for both `YV12` and
-`I420` clips. However, they *are* different, and custom filter writers will need
-to know the difference. Which I'm unclear on. Glad to be of help.
-
-Note that these are all based on internal AviSynth values and reflect that.
-Technically AviSynth doesn't have RGB (in that they don't pack the bytes in
-that order).

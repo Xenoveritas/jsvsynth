@@ -59,8 +59,8 @@ mkdirs(output_dir);
 
 // Our very simple template for the header and footer of the file.
 var template = {
-	head: "<!DOCTYPE html>\n\n<html>\n<head>\n<title>$TITLE</title>\n</head>\n<body>\n",
-	foot: "</body>\n</html>\n"
+	head: "<!DOCTYPE html>\n\n<html>\n<head>\n<title>$TITLE</title>\n<link rel=\"stylesheet\" type=\"text/css\" href=\"bootstrap/css/bootstrap.min.css\">\n<link rel=\"stylesheet\" type=\"text/css\" href=\"bootstrap/css/bootstrap-theme.min.css\">\n</head>\n<body>\n<div class=\"container\">\n",
+	foot: "</div>\n</body>\n</html>\n"
 };
 
 var lexer = new marked.Lexer();

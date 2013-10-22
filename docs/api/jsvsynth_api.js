@@ -91,7 +91,10 @@ AviSynth.ColorSpaces = [];
  * (Actually, strictly speaking, the above is not true: any place that JSVSynth
  * requires a <code>AviSynth.ColorSpace</code>, it's actually looking for either
  * a string or an object which contains a property called <code>name</code> that
- * contains the name of the color space.)
+ * contains the name of the color space. So you can in fact create a "new"
+ * ColorSpace object and if you supply the name of an existing color space, it
+ * will, in fact, "work." But there's no point to doing this.)
+ * @constructor
  */
 AviSynth.ColorSpace = function() { };
 
@@ -345,7 +348,7 @@ AviSynth.Clip.prototype.getFrame = function(frame) { };
  * FIXME: it should be possible to extend this class. This will probably be done
  * by setting "defaults" for the video information. The entire set of video
  * information required is basically the same as those taken by AviSynth's
- * <code>BlankClip<code> filter: int "length", int "width", int "height", string "pixel_type",
+ * <code>BlankClip</code> filter: int "length", int "width", int "height", string "pixel_type",
    float "fps", int "fps_denominator", int "audio_rate", int "channels",
    string "sample_type", int "color", int "color_yuv"
  * @constructor
@@ -385,6 +388,10 @@ AviSynth.Filter.prototype.getFrame = function(frame) { };
 /**
  * A video frame. At present, you can't construct video frames directly. This
  * may change at a future point in time.
+ * <p>
+ * All video frames accessed from AviSynth are actually either a
+ * {@linkcode AviSynth.InterleavedVideoFrame} (for RGB24/RGB32/YUY2) or a
+ * {@linkcode AviSynth.PlanarVideoFrame} (for YV12).
  * @constructor
  */
 AviSynth.VideoFrame = function() { };
@@ -463,7 +470,13 @@ AviSynth.VideoFrameData.prototype = {
 	 */
 	rowSize: 0,
 	/**
-	 * The height of the frame.
+	 * The width of the frame in pixels. In the case of planar data,
+	 * this may not be what you're expecting due to chroma subsampling!
+	 */
+	width: 0,
+	/**
+	 * The height of the frame in pixels. In the case of planar data,
+	 * this may not be what you're expecting due to chroma subsampling!
 	 * @type {number}
 	 * @readonly
 	 */
