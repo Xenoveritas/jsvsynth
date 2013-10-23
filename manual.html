@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<title>JSVSynth User Documentation</title>
+<link rel="stylesheet" type="text/css" href="bootstrap/css/bootstrap.min.css">
+<link rel="stylesheet" type="text/css" href="bootstrap/css/bootstrap-theme.min.css">
+</head>
+<body>
+<div class="container">
+<h1 id="JSVSynth_User_Documentation">JSVSynth User Documentation</h1>
+<p>This documentation describes using JSVSynth from within AviSynth. For a
+complete list of classes and objects available from JavaScript, <a href="api/index.html">check out the
+complete API documentation</a>.</p>
+<p>Before you can use the plugin, you&#39;ll need to load it. This is a &quot;regular&quot;
+AviSynth plugin (not a C plugin), so you use:</p>
+<pre><code class="lang-avisynth">LoadPlugin(&quot;jsvsynth.dll&quot;)</code></pre>
+<p>Once you&#39;ve loaded the plugin, you have access to the following new
+AviSynth functions:</p>
+<ul>
+<li><code>JavaScript(code)</code></li>
+<li><code>ImportJS(filename)</code></li>
+</ul>
+<p>These allow you to execute JavaScript code from within AviSynth.</p>
+<p><code>JavaScript(code)</code> simply executes the JavaScript code given in <code>code</code> while
+<code>ImportJS(filename)</code> loads the file given by <code>filename</code> and executes the
+contents as JavaScript.</p>
+<p>The JavaScript environment within JSVSynth is very similar to what you&#39;d
+expect: things like <code>Number</code>, <code>Date</code>, and <code>Math</code> are all there. However, this
+isn&#39;t a browser: <code>window</code> does not exist and most HTML APIs won&#39;t be there. (So
+no <code>XMLHttpRequest</code> or stuff like that.)</p>
+<p>Instead, you have the <code>AviSynth</code> and <code>avs</code> objects, which provides your bridge
+between JavaScript and AviSynth. You can access any AviSynth function or
+variable from the <code>avs</code> object, just like you would any other object:</p>
+<pre><code class="lang-javascript">var baz = avs.foo + avs[&#39;bar&#39;]</code></pre>
+<p>AviSynth functions can also be accessed that way. Note that all AviSynth
+filters are &quot;functions.&quot; If you really wanted to, you can even access the
+JavaScript filter provided by JSVSynth through <code>avs</code>, although I wouldn&#39;t
+recommend it. (After all, <code>eval</code> is available.)</p>
+<h2 id="JSVSynth_API">JSVSynth API</h2>
+<p>The <a href="api/index.html">full documentation of the AviSynth API</a> is available as a
+set of jsdoc pages. However, some more specific documentation is also available:</p>
+<ul>
+<li><a href="environment.html">JavaScript Environment</a> - what&#39;s available to JavaScript
+inside an AVS file</li>
+<li><a href="exporting_functions.html">Exporting Functions</a> - how to export a JavaScript
+function so that it can be used from AviSynth</li>
+<li><a href="javascript_filter.html">Writing a JavaScript Filter</a> - how to write a custom
+AviSynth filter directly in JavaScript</li>
+<li><a href="javascript_simplerenderingcontext.html">SimpleRenderingContext</a> - using a
+SimpleRenderingContext to draw on a frame</li>
+</ul>
+</div>
+</body>
+</html>

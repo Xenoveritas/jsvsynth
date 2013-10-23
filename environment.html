@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<title>JavaScript Environment</title>
+<link rel="stylesheet" type="text/css" href="bootstrap/css/bootstrap.min.css">
+<link rel="stylesheet" type="text/css" href="bootstrap/css/bootstrap-theme.min.css">
+</head>
+<body>
+<div class="container">
+<h1 id="JavaScript_Environment">JavaScript Environment</h1>
+<p>This document describes the contents of the JavaScript environment avaiable
+when running within JSVSynth.</p>
+<p>The following documentation is a bit speculative. Check out the
+<a href="api/AviSynth.html">AviSynth object documentation</a> for the most up-to-date
+version.</p>
+<h2 id="AviSynth">AviSynth</h2>
+<p>The <code>AviSynth</code> object is effectively the &quot;namespace&quot; for various AviSynth
+functions and contains the following:</p>
+<ul>
+<li><code>AviSynth.ColorSpace</code> - a color space inside AviSynth, see
+<a href="api/AviSynth.ColorSpace.html">AviSynth.ColorSpace</a></li>
+<li><code>AviSynth.Filter</code> - constructor for creating custom AviSynth filters, see
+the &quot;Filter&quot; section below for details</li>
+<li><code>AviSynth.VideoFrame</code> - class that provides direct access to video frame data.
+Instances can be created directly in order to create blank frames or be pulled
+from an existing clip.</li>
+<li><code>AviSynth.functions</code> - a collection of AviSynth functions. This allows
+accessing and setting AviSynth functions from JavaScript. Note that functions
+and variables have different namespaces in AviSynth, while they share a
+namespace in JavaScript. This only access functions. Also note that the
+function and variable namespaces in AviSynth are case-insensitive. This
+collection reflects that - <code>AviSynth.functions[&#39;foo&#39;]</code> is the same as
+<code>AviSynth.functions[&#39;FOO&#39;]</code>.</li>
+<li><code>AviSynth.variables</code> - a collection of AviSynth variables. This allows
+accessing and setting AviSynth variables from JavaScript. See the above note.</li>
+</ul>
+<h2 id="avs">avs</h2>
+<p><code>avs</code> provides access to both AviSynth functions and variables. In AviSynth,
+functions and variables exist in separate namespaces. Which one gets used is
+based on the syntax. This means that the following code is perfectly valid
+AviSynth:</p>
+<pre><code class="lang-avisynth">foo = 1
+function foo() {
+    return 2
+}</code></pre>
+<p>Both values still exist and can be used. However, in JavaScript, there is no
+separation of functions and variables. This means that there&#39;s no (good) way to
+offer both a function and a value back from AviSynth.</p>
+<p>Instead, currently, if a function exists, it will &quot;mask&quot; the variable of the
+same name. This means that while you can do something like:</p>
+<pre><code>blankclip = &quot;Hello&quot;
+JavaScript(&quot;&quot;&quot;
+    console.log(AviSynth.variables.blankclip + &quot; World!&quot;)
+    avs.BlankClip()
+&quot;&quot;&quot;)</code></pre>
+<p>And access both the variable and function despite them having the same name.</p>
+<p>Note that attempting to set a function to the <code>AviSynth.variables</code> collection
+will instead coerce the value to a string, which probably isn&#39;t what you&#39;d like.</p>
+<p>Setting a non-function to the <code>AviSynth.functions</code> on the other hand will raise
+an error.</p>
+<h2 id="Filter">Filter</h2>
+<p><code>AviSynth.Filter</code> lets you write a filter using JavaScript:</p>
+<pre><code class="lang-javascript">var myfilter = new AviSynth.Filter(avs.BlankClip());
+myfilter.getFrame = function(frameNumber) {
+    return this.child.getFrame(frameNumber);
+};</code></pre>
+<p>At its most basic, an AviSynth filter is something that produces frames. In the
+above example, frames from a <code>BlankClip()</code> are being passed straight through to
+the other end.</p>
+<h3 id="Things_that_will_be_done_____later">Things that will be done ... later</h3>
+<ul>
+<li>Allow a filter to be created without a &quot;child&quot; filter. At present, you always
+have to wrap an existing filter, which is used to determine what fields are
+present.</li>
+</ul>
+<h2 id="VideoFrame">VideoFrame</h2>
+<p>A video frame can be produced by a clip using the <code>getFrame(framenumber)</code>
+function. (This can be used on literally any clip, and, in theory at least, this
+should always produce results.)</p>
+<p>The video frame provides raw access to the pixel data for a frame. There are two
+different types of video frame objects that can be returned: one for interleaved
+access, and one for planar access. The planar access one is slightly weirder
+because you access the Y, U, and V frames seperately.</p>
+<p><strong>Note:</strong> Once a frame has been returned from a filter, it will be &quot;neutered&quot;
+and any remaining references to it will no longer be able to access data. If you
+access a frame but do not return it to the filter, you should manually
+<code>release()</code> it when you&#39;re done with it. (If you don&#39;t, V8 should eventually
+free the video frame when it gets garbage collected. Unless you hold on to a
+reference. Don&#39;t do that.)</p>
+</div>
+</body>
+</html>

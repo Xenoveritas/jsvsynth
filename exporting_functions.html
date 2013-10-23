@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<title>Exporting Functions</title>
+<link rel="stylesheet" type="text/css" href="bootstrap/css/bootstrap.min.css">
+<link rel="stylesheet" type="text/css" href="bootstrap/css/bootstrap-theme.min.css">
+</head>
+<body>
+<div class="container">
+<h1 id="Exporting_Functions">Exporting Functions</h1>
+<p>Frequently you&#39;ll want to make functions declared in JavaScript available to
+AviSynth. This is, at its most basic, very easy:</p>
+<pre><code class="lang-javascript">avs.foo = function(bar) {
+    return Math.PI * bar;
+}</code></pre>
+<p>However, you might want to return a function that takes a bunch of optional
+parameters or duplicate the &quot;named value&quot; feature in AviSynth.</p>
+<p>This is still done in a similar fashion:</p>
+<pre><code class="lang-javascript">var myFunction = function(clip, str, color, x, y) {
+    // TODO: Code that checks if values were set and sets defaults
+    return avs.Subtitle(clip, str, {color:color, x:x, y:y});
+}
+
+myFunction.avsSignature = &quot;c[STRING]s[COLOR]i[X]i[Y]i&quot;;
+avs.myFunction = myFunction;</code></pre>
+<p>In this case, the string set to <code>avsSignature</code> is used to populate the string.</p>
+<p>The signature is simply a string that describes the arguments that an AviSynth
+function takes from left to right. Each character represents a single type,
+taken from the following pool of types:</p>
+<ul>
+<li><code>b</code> - boolean</li>
+<li><code>c</code> - clip (an AviSynth clip)</li>
+<li><code>f</code> - float (JavaScript number)</li>
+<li><code>i</code> - integer</li>
+<li><code>s</code> - string</li>
+<li><code>.</code> - any type</li>
+</ul>
+<p>You can make an argument optional by preceeding it with a name in brackets. In
+the above example signature, <code>&quot;c[STRING]s[COLOR]i[X]i[Y]i&quot;</code>, the second argument
+is an optional argument named <code>&quot;STRING&quot;</code> that is a string. The third argument is
+an optional argument named <code>&quot;COLOR&quot;</code> that is an integer, and so on.</p>
+<p>If an argument is optional but has no value, then the value given to JavaScript
+will be <code>null</code>. (TODO: Should this really be <code>undefined</code>?) So to set a default
+value, you should (currently) use:</p>
+<pre><code class="lang-javascript">if (value == null) {
+    value = defaultValue;
+}</code></pre>
+<p>The final aspect of the signature is the number of times values can appear.
+In the above examples, all of them take a single value. However, let&#39;s take a
+quick look at the default signature, used if you don&#39;t specify anything: <code>&quot;.*&quot;</code></p>
+<p>This signature takes any type of value, 0 or more times. The other option is <code>+</code>
+which takes one or more values. So a function that takes one or more strings
+would have a signature of <code>&quot;s+&quot;</code>.</p>
+<hr>
+<p><strong>Note:</strong> I have no idea what will happen if you attempt to repeat types and
+make an ambiguous signature or combine <code>+</code> or <code>*</code> with an optional argument.</p>
+<p>In other words, I have no idea what <code>s+s*</code> would do (as there&#39;d be no way to
+tell when one set of strings ends and another begins - yes, this is important,
+see the section below on &quot;expanding arrays&quot;) or what <code>i[FOO]s+</code> would do.</p>
+<hr>
+<h2 id="Expanding_Arrays">Expanding Arrays</h2>
+<p>Now you might expect a function with a signature of <code>&quot;s+&quot;</code> to be something like
+this:</p>
+<pre><code class="lang-javascript">function join(separator) {
+    var res = &quot;&quot;;
+    for (var i = 1; i &lt; arguments.length; i++) {
+        if (i &gt; 1)
+            res += separator;
+        res += arguments[i];
+    }
+    return res;
+}
+join.avsSignature = &quot;ss+&quot;;
+avs.join = join;</code></pre>
+<p>And, from the JavaScript side, this will work as you expected. However, that&#39;s
+because some &quot;magic&quot; is happening behind the scenes.</p>
+<p>When you invoke a function with a <code>*</code> or <code>+</code> in the signature, all values that
+&quot;matched&quot; that set are placed into an AviSynth array. (Yes, AviSynth supports
+arrays - but only for passing arguments to functions. This is also the only
+place they appear and you can only nest them &quot;two deep&quot; - once for the array of
+arguments in the first place, and a second time for any <code>*</code> or <code>+</code> arguments.)</p>
+<p>This means that the following:</p>
+<pre><code class="lang-avisynth">join(&quot; &quot;, &quot;Peter&quot;, &quot;picked&quot;, &quot;a&quot;, &quot;peck&quot;, &quot;of&quot;, &quot;pickled&quot;, &quot;peppers&quot;)</code></pre>
+<p>Will initially map to the following call:</p>
+<pre><code class="lang-javascript">join(&quot; &quot;, [ &quot;Peter&quot;, &quot;picked&quot;, &quot;a&quot;, &quot;peck&quot;, &quot;of&quot;, &quot;pickled&quot;, &quot;peppers&quot; ] )</code></pre>
+<p>However, this isn&#39;t what will get called, and that&#39;s due to &quot;array expansion.&quot;
+If you remember above, the default signature is <code>&quot;.*&quot;</code>. In order to make most
+functions do what you&#39;d expect, if the final argument to a JavaScript function
+is an array, JSVSynth will &quot;expand&quot; the array into the arguments list.</p>
+<p>This makes most things behave like you&#39;d expect from the JavaScript side.</p>
+<p>However, you can still control this, using the <code>avsExpandArrays</code> value on the
+function itself. This can have any of the following values:</p>
+<ul>
+<li><code>&quot;always&quot;</code> - always expand arrays, in all positions</li>
+<li><code>&quot;never&quot;</code> - never expand arrays, always maintain them</li>
+<li><code>&quot;last&quot;</code> - only expand an array if it&#39;s the last value given to the function,
+which is the default</li>
+</ul>
+</div>
+</body>
+</html>

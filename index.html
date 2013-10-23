@@ -1,214 +1,139 @@
-<!doctype html>
+<!DOCTYPE html>
+
 <html>
-  <head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="chrome=1">
-    <title>Jsvsynth by Xenoveritas</title>
-
-    <link rel="stylesheet" href="stylesheets/styles.css">
-    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
-    <script src="javascripts/scale.fix.js"></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-    <!--[if lt IE 9]>
-    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
-    <![endif]-->
-  </head>
-  <body>
-    <div class="wrapper">
-      <header>
-        <h1 class="header">Jsvsynth</h1>
-        <p class="header">JSVSynth, a plugin allowing embedding JavaScript into AviSynth scripts.</p>
-
-        <ul>
-          <li class="download"><a class="buttons" href="https://github.com/Xenoveritas/jsvsynth/zipball/master">Download ZIP</a></li>
-          <li class="download"><a class="buttons" href="https://github.com/Xenoveritas/jsvsynth/tarball/master">Download TAR</a></li>
-          <li><a class="buttons github" href="https://github.com/Xenoveritas/jsvsynth">View On GitHub</a></li>
-        </ul>
-
-        <p class="header">This project is maintained by <a class="header name" href="https://github.com/Xenoveritas">Xenoveritas</a></p>
-
-
-      </header>
-      <section>
-        <h1>
-<a name="jsvsynth" class="anchor" href="#jsvsynth"><span class="octicon octicon-link"></span></a>JSVSynth</h1>
-
+<head>
+<title>JSVSynth</title>
+<link rel="stylesheet" type="text/css" href="bootstrap/css/bootstrap.min.css">
+<link rel="stylesheet" type="text/css" href="bootstrap/css/bootstrap-theme.min.css">
+</head>
+<body>
+<div class="container">
+<h1 id="JSVSynth">JSVSynth</h1>
 <p>JSVSynth is a plugin to AviSynth that allows the use of JavaScript within
-AviSynth scripts. It uses <a href="https://developers.google.com/v8/">Google's V8 JavaScript
+AviSynth scripts. It uses <a href="https://developers.google.com/v8/">Google&#39;s V8 JavaScript
 engine</a> (the same JavaScript
 engine that Chrome uses) to run JavaScript. This means that the pure JavaScript
-code will run with the same speed that Chrome's pure JavaScript does. (The
+code will run with the same speed that Chrome&#39;s pure JavaScript does. (The
 scripting bridge provided by the plugin may not be quite as fast.)</p>
-
 <p>JSVSynth is licensed under the GPLv3. Note that, just like AviSynth being under
 the GPL, this does not require scripts written using JSVSynth being released
 under the GPLv3.</p>
-
-<h2>
-<a name="using-the-plugin" class="anchor" href="#using-the-plugin"><span class="octicon octicon-link"></span></a>Using the Plugin</h2>
-
+<h2 id="Download">Download</h2>
+<p>You can <a href="http://www.xenoveritas.org/static/jsvsynth/jsvsynth-2013102300.zip">download the current alpha version of JSVSynth
+(version 0.0.1-2013102300)</a>.</p>
+<h2 id="Using_the_Plugin">Using the Plugin</h2>
+<p>For complete documentation, check out <a href="manual.html">the complete manual</a>.</p>
 <p>With a compiled version of the plugin (see Building the Plugin below), using it
 from within AviSynth is fairly simple:</p>
-
-<pre><code>LoadPlugin("jsvsynth.dll")
-</code></pre>
-
-<p>You can then use AviSynth's multi-line string blocks to write your actual
+<pre><code>LoadPlugin(&quot;jsvsynth.dll&quot;)</code></pre>
+<p>You can then use AviSynth&#39;s multi-line string blocks to write your actual
 JavaScript code:</p>
-
-<pre><code>JavaScript("""
-avisynth.Subtitle(avisynth.BlankClip({color:0xFF}), "Hello from JavaScript!")
-""")
-</code></pre>
-
-<p>The JavaScript object <code>avisynth</code> offers access to any AviSynth variable or
+<pre><code>JavaScript(&quot;&quot;&quot;
+avs.Subtitle(avs.BlankClip({color:0xFF}), &quot;Hello from JavaScript!&quot;)
+&quot;&quot;&quot;)</code></pre>
+<p>The JavaScript object <code>avs</code> offers access to any AviSynth variable or
 function from within JavaScript:</p>
-
-<pre><code>avsvalue = "Set in AviSynth"
-JavaScript("""
-avisynth.Subtitle(avisynth.BlankClip({color:0xFF}), avisynth.avsvalue)
-""")
-</code></pre>
-
+<pre><code>avsvalue = &quot;Set in AviSynth&quot;
+JavaScript(&quot;&quot;&quot;
+avs.Subtitle(avs.BlankClip({color:0xFF}), avs.avsvalue)
+&quot;&quot;&quot;)</code></pre>
 <p>You can almost do the reverse, but with one caveat:</p>
-
 <pre><code>avsvalue = 0
-JavaScript("""
-avisynth.avsvalue = "Hello " + "AviSynth!";
-""")
-Subtitle(BlankClip(color=$FF), avsvalue);
-</code></pre>
-
+JavaScript(&quot;&quot;&quot;
+avs.avsvalue = &quot;Hello &quot; + &quot;AviSynth!&quot;;
+&quot;&quot;&quot;)
+Subtitle(BlankClip(color=$FF), avsvalue)</code></pre>
 <p>The value has to be set to something before it will work. Otherwise, even though
-the value will be set, AviSynth will give an "I don't know what avsvalue means"
+the value will be set, AviSynth will give an &quot;I don&#39;t know what avsvalue means&quot;
 error for the variable.</p>
-
-<p>I'm not entirely sure whether or not this is a problem with AviSynth or is
-instead something I'm unclear about within the AviSynth API.</p>
-
-<h3>
-<a name="calling-avisynth-filters-from-javascript" class="anchor" href="#calling-avisynth-filters-from-javascript"><span class="octicon octicon-link"></span></a>Calling AviSynth Filters from JavaScript</h3>
-
-<p>For the most part, this works like you'd expect: invoke a function using the
+<p>I&#39;m not entirely sure whether or not this is a problem with AviSynth or is
+instead something I&#39;m unclear about within the AviSynth API.</p>
+<h3 id="Calling_AviSynth_Filters_from_JavaScript">Calling AviSynth Filters from JavaScript</h3>
+<p>For the most part, this works like you&#39;d expect: invoke a function using the
 exact same values you would in AviSynth. However, things work slightly
 differently when using JavaScript than they would in AviSynth.</p>
-
 <ol>
-<li>At present, it's not possible to do something like <code>clip.Trim(50)</code>. A future
+<li>At present, it&#39;s not possible to do something like <code>clip.Trim(50)</code>. A future
 update will likely attempt to make code like that possible.</li>
 <li>Named variables are handled as an object, as demonstrated by the
-<code>avisynth.BlankClip({color:0xFF})</code> above. This value must always be the
-<strong>last</strong> value given. Otherwise, it'll be translated into a string (likely
+<code>avs.BlankClip({color:0xFF})</code> above. This value must always be the
+<strong>last</strong> value given. Otherwise, it&#39;ll be translated into a string (likely
 <code>[object Object]</code>).</li>
-<li>Conversions from JavaScript don't take into account the signature of the
-function being called. (As the signature can't be retrieved by plugins
+<li>Conversions from JavaScript don&#39;t take into account the signature of the
+function being called. (As the signature can&#39;t be retrieved by plugins
 anyway.)</li>
-<li>
-<code>last</code> is not a thing in JavaScript. Calling a filter without specifying a
-clip won't automatically cause <code>last</code> to be used.</li>
-</ol><h3>
-<a name="other-weird-caveats" class="anchor" href="#other-weird-caveats"><span class="octicon octicon-link"></span></a>Other Weird Caveats</h3>
-
-<p>AviSynth is case insensitive, and the <code>avisynth</code> object will reflect that:</p>
-
-<p><code>avisynth.blankclip()</code> is the same as <code>avisynth.BlankClip()</code>.</p>
-
-<p>JavaScript is not: <code>avisynth.blankclip()</code> is <strong>not</strong> the same as
-<code>AviSynth.blankclip()</code>!</p>
-
-<p>This is one of the reasons why you can't use <code>for(var i in avisynth)</code> to iterate
+<li><code>last</code> is not a thing in JavaScript. Calling a filter without specifying a
+clip won&#39;t automatically cause <code>last</code> to be used.</li>
+</ol>
+<h3 id="Other_Weird_Caveats">Other Weird Caveats</h3>
+<p>AviSynth is case insensitive, and the <code>avs</code> object will reflect that:</p>
+<p><code>avs.blankclip()</code> is the same as <code>avs.BlankClip()</code>.</p>
+<p>JavaScript is not: <code>avs.blankclip()</code> is <strong>not</strong> the same as
+<code>AVS.blankclip()</code>!</p>
+<p>This is one of the reasons why you can&#39;t use <code>for(var i in avs)</code> to iterate
 over variables in AviSynth. (The primary reason is that the AviSynth API offers
 absolutely no way to pull the list of variables in any case.)</p>
-
 <p>Another weird caveat is passing functions back to AviSynth. With most values,
 you can actually use the evaluation of the JavaScript block:</p>
-
-<pre><code>Subtitle(BlankClip(), String(JavaScript("12 + 30")))
-</code></pre>
-
-<p>However, you can't pass functions back in this fashion, as this doesn't make
-sense in AviSynth: functions aren't "variables" per se, they're instead in a
+<pre><code>Subtitle(BlankClip(), String(JavaScript(&quot;12 + 30&quot;)))</code></pre>
+<p>However, you can&#39;t pass functions back in this fashion, as this doesn&#39;t make
+sense in AviSynth: functions aren&#39;t &quot;variables&quot; per se, they&#39;re instead in a
 separate (of sorts) namespace. (If you do write a bit of JavaScript that
 evaluates to a function, the result will be the function converted to a string.)</p>
-
-<p>This doesn't mean you can't use JavaScript functions from AviSynth: you just
-have to "export" them using the AviSynth object:</p>
-
-<pre><code>JavaScript("""
-  avisynth.fromjs = function(str) {
-    return "Hello " + str.substring(0,1).toUpperCase() + str.substring(1);
+<p>This doesn&#39;t mean you can&#39;t use JavaScript functions from AviSynth: you just
+have to &quot;export&quot; them using the <code>avs</code> object:</p>
+<pre><code>JavaScript(&quot;&quot;&quot;
+  avs.fromjs = function(str) {
+    return &quot;Hello &quot; + str.substring(0,1).toUpperCase() + str.substring(1);
   }
-""")
-Subtitle(BlankClip(), FromJS("world"))
-</code></pre>
-
-<p>Note that (at present) there's no way to specify a function's signature or to
+&quot;&quot;&quot;)
+Subtitle(BlankClip(), FromJS(&quot;world&quot;))</code></pre>
+<p>Note that (at present) there&#39;s no way to specify a function&#39;s signature or to
 accept named arguments from AviSynth (as those rely on a signature).</p>
-
 <p>Another caveat with this is that using functions in this way will (potentially)
 leak memory: these functions are bound to the AviSynth environment and can
-never be collected while the script runs. (I don't think this is any real
-practical concern, but it's worth noting somewhere.) Theoretically everything
-should be collected when AviSynth shuts down, but I haven't verified this.</p>
-
-<h3>
-<a name="animating-with-javascript" class="anchor" href="#animating-with-javascript"><span class="octicon octicon-link"></span></a>Animating With JavaScript</h3>
-
+never be collected while the script runs. (I don&#39;t think this is any real
+practical concern, but it&#39;s worth noting somewhere.) Theoretically everything
+should be collected when AviSynth shuts down, but I haven&#39;t verified this.</p>
+<h3 id="Animating_With_JavaScript">Animating With JavaScript</h3>
 <p>It may be tempting to write a JavaScript function within an AviSynth function
-and use that within <code>Animate</code>. <strong>Don't do that.</strong> The JavaScript function will
-be recompiled every single frame and you won't get any of the speed advantages
-of V8's JIT.</p>
-
+and use that within <code>Animate</code>. <strong>Don&#39;t do that.</strong> The JavaScript function will
+be recompiled every single frame and you won&#39;t get any of the speed advantages
+of V8&#39;s JIT.</p>
 <p>Instead, use the above method of exporting functions and animate that way:</p>
-
-<pre><code>JavaScript("""
-  avisynth.animfun = function(clip, str, y) {
-    return avisynth.Subtitle(clip, str, {y:y});
+<pre><code>JavaScript(&quot;&quot;&quot;
+  avs.animfun = function(clip, str, y) {
+    return avs.Subtitle(clip, str, {y:y});
   }
-""")
+&quot;&quot;&quot;)
 c = BlankClip()
-Animate(0, 50, "animfun", c,"Scrolling",0, c,"Scrolling",50)
-</code></pre>
-
-<h2>
-<a name="building-the-plugin" class="anchor" href="#building-the-plugin"><span class="octicon octicon-link"></span></a>Building the Plugin</h2>
-
-<p>In order to build this plugin, you'll require V8, which is not included. (At one
-point I was hoping to include just the V8 binaries, but they're large enough and
-V8 is a fast enough moving target that it just isn't feasible.)</p>
-
-<p>In any case, use SVN to download the V8 trunk into "v8":</p>
-
-<pre><code>svn http://v8.googlecode.com/svn/trunk v8
-</code></pre>
-
-<p>Note that while using git is "recommended," the git instructions are for
-accessing the "bleeding edge" branch, while all we want is the "stable" branch,
+Animate(0, 50, &quot;animfun&quot;, c,&quot;Scrolling&quot;,0, c,&quot;Scrolling&quot;,50)</code></pre>
+<h2 id="Building_the_Plugin">Building the Plugin</h2>
+<p>In order to build this plugin, you&#39;ll require V8, which is not included. (At one
+point I was hoping to include just the V8 binaries, but they&#39;re large enough and
+V8 is a fast enough moving target that it just isn&#39;t feasible.)</p>
+<p>A <code>third_party.bat</code> file is provided to help automate the process of downloading
+the third party software. Since there are four separate repositories you need to
+grab to get everything up and running under Windows, and since the
+<code>third_party.bat</code> file keeps everything to the same versions as the original
+code, you should probably stick with using that. However, you can also manually
+grab V8 into the &quot;v8&quot; directory by running the following command:</p>
+<pre><code>svn checkout http://v8.googlecode.com/svn/trunk v8</code></pre>
+<p>Note that while using git is &quot;recommended,&quot; the git instructions are for
+accessing the &quot;bleeding edge&quot; branch, while all we want is the &quot;stable&quot; branch,
 which is the SVN trunk branch.</p>
-
 <p>Once you have V8 downloaded, you can build it by following the <a href="http://code.google.com/p/v8/wiki/BuildingWithGYP">V8 building with
 GYP instructions</a>. Make sure
 you note the bit about downloading the Chromium-provided Cygwin, as the Visual
 Studio build <strong>will not work without it</strong>.</p>
-
-<p>Note that if you're using a more recent version of Visual Studio (or is it just
-the express versions?) you'll need to use <code>MSBuild</code> instead of <code>devenv</code> to build
+<p>Note that if you&#39;re using a more recent version of Visual Studio (or is it just
+the express versions?) you&#39;ll need to use <code>MSBuild</code> instead of <code>devenv</code> to build
 the project from the command line. The command is similar:</p>
-
-<pre><code>MSBuild build/all.sln /p:Configuration=Release 
-</code></pre>
-
-<p>If you're planning on building the debug version of the plugin, you'll want to
+<pre><code>MSBuild build\all.sln /p:Configuration=Release</code></pre>
+<p>If you&#39;re planning on building the debug version of the plugin, you&#39;ll want to
 use <code>/p:Configuration=Debug</code> instead.</p>
-
 <p>Once V8 is built, you should be able to build everything else using the
 <code>jsvsynth.sln</code>.</p>
-      </section>
-      <footer>
-        <p><small>Hosted on <a href="https://pages.github.com">GitHub Pages</a> using the Dinky theme</small></p>
-      </footer>
-    </div>
-    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
-		
-  </body>
+</div>
+</body>
 </html>

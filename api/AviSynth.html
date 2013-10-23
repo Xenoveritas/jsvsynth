@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Namespace: AviSynth</title>
+    
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+    
+    <h1 class="page-title">Namespace: AviSynth</h1>
+    
+    
+
+
+
+<section>
+    
+<header>
+    <h2>
+    AviSynth
+    </h2>
+    
+</header>  
+
+<article>
+    <div class="container-overview">
+    
+    
+    
+        
+            <div class="description">The primary namespace for AviSynth-related builtins.</div>
+        
+        
+        
+<dl class="details">
+    
+        
+    
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="jsvsynth_api.js.html">jsvsynth_api.js</a>, <a href="jsvsynth_api.js.html#line44">line 44</a>
+    </li></ul></dd>
+    
+    
+    
+    
+    
+    
+    
+</dl>
+
+        
+        
+    
+    </div>
+    
+    
+    
+    
+    
+    
+    
+    
+        <h3 class="subsection-title">Classes</h3>
+        
+        <dl>
+            <dt><a href="AviSynth.Clip.html">Clip</a></dt>
+            <dd></dd>
+        
+            <dt><a href="AviSynth.ColorSpace.html">ColorSpace</a></dt>
+            <dd></dd>
+        
+            <dt><a href="AviSynth.Filter.html">Filter</a></dt>
+            <dd></dd>
+        
+            <dt><a href="AviSynth.InterleavedVideoFrame.html">InterleavedVideoFrame</a></dt>
+            <dd></dd>
+        
+            <dt><a href="AviSynth.PlanarVideoFrame.html">PlanarVideoFrame</a></dt>
+            <dd></dd>
+        
+            <dt><a href="AviSynth.RenderingContext.html">RenderingContext</a></dt>
+            <dd></dd>
+        
+            <dt><a href="AviSynth.SimpleRenderingContext.html">SimpleRenderingContext</a></dt>
+            <dd></dd>
+        
+            <dt><a href="AviSynth.VideoFrame.html">VideoFrame</a></dt>
+            <dd></dd>
+        
+            <dt><a href="AviSynth.VideoInfo.html">VideoInfo</a></dt>
+            <dd></dd>
+        </dl>
+    
+    
+    
+    
+    
+        <h3 class="subsection-title">Members</h3>
+        
+        <dl>
+            
+<dt>
+    <h4 class="name" id="ColorSpaces"><span class="type-signature">&lt;static> </span>ColorSpaces<span class="type-signature"></span></h4>
+    
+    
+</dt>
+<dd>
+    
+    <div class="description">
+        An array of available color spaces within AviSynth. Each object is a
+<a href="AviSynth.ColorSpace.html"><code>AviSynth.ColorSpace</code></a> object.
+    </div>
+    
+    
+    
+
+    
+<dl class="details">
+    
+        
+    
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="jsvsynth_api.js.html">jsvsynth_api.js</a>, <a href="jsvsynth_api.js.html#line84">line 84</a>
+    </li></ul></dd>
+    
+    
+    
+    
+    
+    
+    
+</dl>
+
+    
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name" id="functions"><span class="type-signature">&lt;static> </span>functions<span class="type-signature"></span></h4>
+    
+    
+</dt>
+<dd>
+    
+    <div class="description">
+        A collection of functions in the AviSynth scripting environment. AviSynth
+has functions and variables occupy separate namespaces, so this allows you
+to limit access to solely functions. It provides
+read/write access like <a href="global.html#avs"><code>avs</code></a>, with the exception that you can
+only export functions to AviSynth in this way.
+<p>
+Note: AviSynth functions are case-insensitive, meaning that
+<code>AviSynth.functions.AVISource</code> and
+<code>AviSynth.functions.avisource</code> refer to the same function.
+<p>
+Note: you cannot use <code>for (var f in AviSynth.functions) {}</code> to
+iterate over functions in AviSynth, you can only get and set functions
+through this collection.
+    </div>
+    
+    
+    
+
+    
+<dl class="details">
+    
+        
+    
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="jsvsynth_api.js.html">jsvsynth_api.js</a>, <a href="jsvsynth_api.js.html#line61">line 61</a>
+    </li></ul></dd>
+    
+    
+    
+    
+    
+    
+    
+</dl>
+
+    
+    
+</dd>
+
+        
+            
+<dt>
+    <h4 class="name" id="variables"><span class="type-signature">&lt;static> </span>variables<span class="type-signature"></span></h4>
+    
+    
+</dt>
+<dd>
+    
+    <div class="description">
+        A collection of variables in the AviSynth scripting environment. AviSynth
+has functions and variables occupy separate namespaces, so this allows you
+to access a variable that has been "masked" by a function. It provides
+read/write access like <a href="global.html#avs"><code>avs</code></a>, with the exception that functions
+cannot be exported to AviSynth in this way.
+<p>
+Note: AviSynth variables are case-insensitive, meaning that
+<code>AviSynth.variables.foo</code> and <code>AviSynth.variables.Foo</code>
+refer to the same value.
+<p>
+Note: you cannot use <code>for (var v in AviSynth.variables) {}</code> to
+iterate over variables in AviSynth, you can only get and set values through
+this collection.
+    </div>
+    
+    
+    
+
+    
+<dl class="details">
+    
+        
+    
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="jsvsynth_api.js.html">jsvsynth_api.js</a>, <a href="jsvsynth_api.js.html#line78">line 78</a>
+    </li></ul></dd>
+    
+    
+    
+    
+    
+    
+    
+</dl>
+
+    
+    
+</dd>
+
+        </dl>
+    
+    
+    
+    
+    
+    
+    
+</article>
+
+</section>  
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Index</a></h2><h3>Classes</h3><ul><li><a href="AviSynth.Clip.html">Clip</a></li><li><a href="AviSynth.ColorSpace.html">ColorSpace</a></li><li><a href="AviSynth.Filter.html">Filter</a></li><li><a href="AviSynth.InterleavedVideoFrame.html">InterleavedVideoFrame</a></li><li><a href="AviSynth.PlanarVideoFrame.html">PlanarVideoFrame</a></li><li><a href="AviSynth.RenderingContext.html">RenderingContext</a></li><li><a href="AviSynth.SimpleRenderingContext.html">SimpleRenderingContext</a></li><li><a href="AviSynth.VideoFrame.html">VideoFrame</a></li><li><a href="AviSynth.VideoInfo.html">VideoInfo</a></li></ul><h3>Namespaces</h3><ul><li><a href="AviSynth.html">AviSynth</a></li></ul><h3>Mixins</h3><ul><li><a href="AviSynth.VideoFrameData.html">VideoFrameData</a></li></ul><h3>Global</h3><ul><li><a href="global.html#avs">avs</a></li></ul>
+</nav>
+
+<br clear="both">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.2.0-dev</a> on Tue Oct 22 2013 20:22:19 GMT-0400 (EDT)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
