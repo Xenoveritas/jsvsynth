@@ -4,7 +4,7 @@
 #ifdef _DEBUG
 # define VER_FILEVERSION_STR         "0.0.1-debug\0"
 #else
-# define VER_FILEVERSION_STR         "0.0.1-2013102300\0"
+# define VER_FILEVERSION_STR         "0.0.1\0" /*-2013102300\0"*/
 #endif
 
 /* Is the same */
