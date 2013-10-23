@@ -4,7 +4,7 @@
 // JSDoc if it's available.
 
 var doc_dir = 'docs';
-var output_dir = 'build/website';
+var output_dir = 'build/docs';
 var css = [ 'bootstrap/css/bootstrap.min.css', 'bootstrap/css/bootstrap-theme.min.css' ];
 var jsdoc_api = 'docs/api/jsvsynth_api.js';
 var jsdoc_dest = output_dir + '/api';
@@ -64,6 +64,27 @@ var template = {
 };
 
 var lexer = new marked.Lexer();
+var parser = new marked.Parser();
+
+// Slightly customize HTML generated
+var parser_tok = parser.tok;
+parser.tok = function() {
+	switch (this.token.type) {
+	case 'heading':
+		var text = this.inline.output(this.token.text);
+		return '<h'
+			+ this.token.depth
+			+ ' id="'
+			+ text.replace(/[^A-Za-z0-9_-]/g, '_')
+			+ '">'
+			+ text
+			+ '</h'
+			+ this.token.depth
+			+ '>\n';
+	default:
+		return parser_tok.call(this, arguments);
+	}
+};
 
 /**
  * Wrapper around actual marked used to do some "special" things to the
@@ -87,7 +108,7 @@ function jsvmarked(text) {
 			});
 		}
 	});
-	return marked.parser(tokens);
+	return parser.parse(tokens);
 }
 
 // Pull in the contents of the doc dir
@@ -102,7 +123,7 @@ function createMarkdown(next) {
 			console.log("Marked: %s => %s", mdFile, htmlFile);
 			var markdownText = fs.readFileSync(mdFile, {encoding:"utf8"});
 			var html = jsvmarked(markdownText);
-			var title = /<h1>(.*?)<\/h1>/.exec(html);
+			var title = /<h1[^>]*>(.*?)<\/h1>/.exec(html);
 			if (title) {
 				title = title[1];
 			} else {

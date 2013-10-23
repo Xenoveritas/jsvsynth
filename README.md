@@ -156,7 +156,7 @@ Note that if you're using a more recent version of Visual Studio (or is it just
 the express versions?) you'll need to use `MSBuild` instead of `devenv` to build
 the project from the command line. The command is similar:
 
-    MSBuild build\all.sln /p:Configuration=Release 
+    MSBuild build\all.sln /p:Configuration=Release
 
 If you're planning on building the debug version of the plugin, you'll want to
 use `/p:Configuration=Debug` instead.
