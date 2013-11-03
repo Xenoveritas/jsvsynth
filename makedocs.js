@@ -7,8 +7,9 @@ var doc_dir = 'docs';
 var output_dir = 'build/docs';
 var css = [ 'bootstrap/css/bootstrap.min.css', 'bootstrap/css/bootstrap-theme.min.css' ];
 var jsdoc_api = 'docs/api/jsvsynth_api.js';
+var jsdoc_readme = 'docs/api/README.md';
 var jsdoc_dest = output_dir + '/api';
-var jsdoc_template = false;//'templates/haruki';
+var jsdoc_template = false;//'docs/jsdoc_template';
 
 var os = require('os');
 var path = require('path');
@@ -176,6 +177,17 @@ function runJSDoc(next) {
 	// First see if we can even run JSDoc
 	console.log("jsdoc: check if available");
 
+	// Before going further, do a quick check to see if node_modules/jsdoc
+	// exists, and if it does, add it to the PATH. Really I'd like to
+	// require.resolve() here, but I can't, because JSDoc isn't an actual
+	// Node.js module.
+
+	var jsdoc_module_path = path.join('node_modules', 'jsdoc')
+	if (fs.existsSync(jsdoc_module_path)) {
+		process.env['PATH'] = process.env['PATH'] + path.delimiter + jsdoc_module_path;
+		console.log("Auto-added jsdoc to PATH: %s", process.env.PATH);
+	}
+
 	var jsdoc_command = 'jsdoc';
 	var jsdoc_args = [ ];
 	if (os.type() == 'Windows_NT') {
@@ -206,7 +218,7 @@ function runJSDoc(next) {
 		if (code == 0) {
 			// Success, we can run it
 			console.log("jsdoc: %s => %s", jsdoc_api, jsdoc_dest);
-			var args = jsdoc_args.concat([ jsdoc_api, '-d', jsdoc_dest ]);
+			var args = jsdoc_args.concat([ jsdoc_api, jsdoc_readme, '-d', jsdoc_dest ]);
 			if (jsdoc_template) {
 				args.push('-t', path.normalize(jsdoc_template));
 			}

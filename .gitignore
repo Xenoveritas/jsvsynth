@@ -21,3 +21,9 @@ Release
 *.opensdf
 *.user
 /ipch
+
+# NodeJS stuff (if you install the modules locally)
+/node_modules
+
+# Mac OS X crap
+.DS_Store
