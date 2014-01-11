@@ -9,7 +9,8 @@ var css = [ 'bootstrap/css/bootstrap.min.css', 'bootstrap/css/bootstrap-theme.mi
 var jsdoc_api = 'docs/api/jsvsynth_api.js';
 var jsdoc_readme = 'docs/api/README.md';
 var jsdoc_dest = output_dir + '/api';
-var jsdoc_template = false;//'docs/jsdoc_template';
+var jsdoc_template = 'docs/jsdoc_template';
+var jsdoc_conf = 'docs/template.json';
 
 var os = require('os');
 var path = require('path');
@@ -221,6 +222,9 @@ function runJSDoc(next) {
 			var args = jsdoc_args.concat([ jsdoc_api, jsdoc_readme, '-d', jsdoc_dest ]);
 			if (jsdoc_template) {
 				args.push('-t', path.normalize(jsdoc_template));
+			}
+			if (jsdoc_conf) {
+				args.push('-c', path.normalize(jsdoc_conf));
 			}
 			var jsdoc = child_process.spawn(jsdoc_command, args);
 			jsdoc.stdout.pipe(process.stdout);
