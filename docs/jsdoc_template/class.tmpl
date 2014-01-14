@@ -1,0 +1,83 @@
+This is a "special" template in that it's split into sections using a fake
+SHTML syntax. This first section is ignored.
+
+Sections previous to a single section can be included using the new
+include directive, like <!--#include "something"-->. This won't work here,
+as "something" has yet to be declared, but it doesn't matter, because this
+part of the template isn't used anywhere else.
+
+Note that <!--#include--> is a "preprocessor" include and dumps the raw
+text of the section being included.
+<!--#section "body"-->
+		<div class="row">
+			<div class="col-md-12">
+				<%=description%>
+			</div>
+		</div>
+		<div class="row">
+			<div class="col-md-12">
+				<%_.each(categories, function(category) {
+					if (category.contents.length > 0) { %>
+				<div class="row"><div class="col-md-12"><h1><%-category.title%></h1>
+<%
+					var kindTemplate = category.kindTemplate;
+					if (kindTemplate == null) {
+						kindTemplate = function() { return "[no template for " + category.kind + "]"; };
+					}
+					_.each(category.contents, function(thing) {
+						%><%=kindTemplate({"thing": thing, "replaceLinks": replaceLinks})%><%
+					});
+%>
+					</div>
+				</div>
+<%					}
+				}); %>
+			</div>
+		</div>
+<!--#section "badges"-->
+<% if (thing.readonly) {%><span class="badge">read only</span><% } %>
+<!--#section "kindType"-->
+<% var type = thing.type;
+if (!type) {
+	%><div class="type type-none">no type specified</div>
+<%} else if (type == 'NUMBER') {
+	%><div class="type type-number">number</div>
+<%} else if (type.names) {
+	var rv = [];
+	type.names.forEach(function(t) {
+		rv.push(String(t));
+	});
+	%><div class="type"><%-rv.join(', ')%></div><%
+} else {
+	%><div class="type"><%-String(type)%></div><%
+}%>
+<!--#section "kind.member"-->
+			<div class="panel panel-default">
+				<div class="panel-heading"><h3 class="panel-title" id="<%-thing.name%>"><%-thing.name%></h3></div>
+				<div class="panel-body">
+					<!--#include "badges"-->
+					<!--#include "kindType"-->
+					<%=replaceLinks(thing.description)%>
+				</div>
+			</div>
+<!--#section "kind.function"-->
+			<div class="panel panel-default">
+				<div class="panel-heading"><h3 class="panel-title" id="<%-thing.name%>"><%-thing.name%></h3><!--#include "badges"--></div>
+				<div class="panel-body">
+					<%=replaceLinks(thing.description)%>
+				</div>
+			</div>
+<!--#section "kind.class"-->
+			<div class="panel panel-default">
+				<div class="panel-heading"><h3 class="panel-title" id="<%-thing.name%>"><a href="<%=thing.url%>"><%-thing.name%></a></h3><!--#include "badges"--></div>
+				<div class="panel-body">
+					<%=replaceLinks(thing.description)%>
+				</div>
+			</div>
+<!--#section "kind.mixin"-->
+			<div class="panel panel-default">
+				<div class="panel-heading"><h3 class="panel-title" id="<%-thing.name%>"><a href="<%=thing.url%>"><%-thing.name%></a></h3><!--#include "badges"--></div>
+				<div class="panel-body">
+					<%=replaceLinks(thing.description)%>
+				</div>
+			</div>

@@ -9,6 +9,17 @@ if (readme) { %>
 		<div class="row">
 			<div class="col-md-12">
 				<%_.each(categories, function(category) {
+					if (category.contents.length > 0) { %>
+				<div class="panel panel-default"><div class="panel-heading"><%-category.title%></div>
+					<div class="panel-body">
+						<ul class="nav nav-pills nav-stacked">
+<%						_.each(category.contents, function(thing) {%>
+							<li><a href="<%=thing.url%>"><%-thing.longname%></a></li><%
+						});%>
+						</ul>
+					</div>
+				</div>
+<%					}
 				}); %>
 			</div>
 		</div>

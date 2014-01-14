@@ -44,14 +44,24 @@ function JSVSynthTemplate(data, destination, encoding, options, readme, template
 	var bootstrap = this.bootstrap;
 	if (bootstrap.length > 0 && (bootstrap.charAt(bootstrap.length-1) != '/'))
 		bootstrap = bootstrap + '/';
-	this.css_links = this.stylesheets.reduce(function(left, right) {
-		return left + '<link rel="stylesheet" type="text/css" href="' + bootstrap + right + '">\n';
-	}, "");
 	this.stylesheets = this.stylesheets.map(function(sheet) {
 		return bootstrap + sheet;
 	});
 	this.pageTemplate = _.template(fs.readFileSync(path.join(templatePath, "template.html"), "utf-8"));
 	this.indexPageTemplate = _.template(fs.readFileSync(path.join(templatePath, "index.tmpl"), "utf-8"));
+	this.classPageTemplates = this._loadTemplates(path.join(templatePath, "class.tmpl"));
+	this.classPageTemplate = this.classPageTemplates['body'];
+	// Pull out the kind templates into their own object
+	this.kindTemplates = {};
+	for (var k in this.classPageTemplates) {
+		if (k.substring(0,5) == 'kind.')
+			this.kindTemplates[k.substring(5)] = this.classPageTemplates[k];
+	}
+	// Now that everything is configured, embed links into each of the things in the data array
+	var me = this;
+	this.data().get().forEach(function(thing) {
+		thing.url = me.makeURL(thing);
+	});
 }
 
 JSVSynthTemplate.prototype = {
@@ -79,81 +89,78 @@ JSVSynthTemplate.prototype = {
 	 * The order to show things on a single thing page.
 	 */
 	thingPageObjects: [ "namespace", "class", "mixin", "member", "function" ],
-	writeHeader: function(out, title) {
-		out.write('<!DOCTYPE html>\n\
-\n\
-<html>\n\
-  <head>\n\
-	<meta charset="UTF-8">\n\
-	<title>');
-		out.write(escapeHTML(title));
-		out.write('</title>\n');
-		var bootstrap = this.bootstrap;
-		this.stylesheets.forEach(function(sheet) {
-			out.write('	<link rel="stylesheet" type="text/css" href="');
-			out.write(bootstrap + '/' + sheet);
-			out.write('">\n');
-		});
-		out.write('\t<style type="text/css">body { margin-top: 60px }</style>\n  </head>\n\  <body>\n');
-	},
-	writeNavBar: function(out) {
-		out.write('	<div class="navbar navbar-inverse navbar-fixed-top">\n\
-		<div class="container">\n\
-			<div class="navbar-header">\n\
-				<button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">\n\
-					<span class="icon-bar"></span>\n\
-					<span class="icon-bar"></span>\n\
-					<span class="icon-bar"></span>\n\
-				</button>\n\
-				<a class="navbar-brand" href="#">');
-		out.write(escapeHTML(this.title));
-		out.write('</a>\n\
-			</div>\n\
-			<div class="collapse navbar-collapse">\n\
-				<ul class="nav navbar-nav">\n\
-					<li class="active"><a href="index.html">Index</a></li>\n\
-					<li><a href="#">Classes</a></li>\n\
-					<li><a href="#">Functions</a></li>\n\
-				</ul>\n\
-			</div>\n\
-		</div>\n\
-	</div>\n');
-	},
-	writePanelHeader: function(out, title, type) {
-		if (!type) {
-			type = "panel-default";
+	_loadTemplates: function(filename) {
+		var template = fs.readFileSync(filename, "utf-8");
+		// See if this template contains any sub-sections
+		var sectionStart = 0, searchStart = 0;
+		var currentSection = "__root__";
+		var result = {};
+		var includes = {};
+		while (true) {
+			var idx = template.indexOf("<!--#section", searchStart);
+			if (idx < 0) {
+				// We found the last template.
+				var t = template.substring(sectionStart);
+				result[currentSection] = this._createTemplate(t, includes);
+				includes[currentSection] = t;
+				break;
+			} else {
+				// See if we can find the name of this section
+				var nIdx = template.indexOf("-->", idx);
+				if (nIdx > 0) {
+					// See if we can find a name in the section
+					var m = /^\s*"(.*)"\s*$/.exec(template.substring(idx + 12, nIdx));
+					if (m) {
+						// We have a new match. Create the current template.
+						var t = template.substring(sectionStart, idx);
+						result[currentSection] = this._createTemplate(t, includes);
+						includes[currentSection] = t;
+						currentSection = m[1];
+						sectionStart = searchStart = nIdx+3;
+						continue;
+					}
+				}
+				// If we've fallen through to here, we didn't find a valid section marker, so just
+				// advance the search position.
+				searchStart = idx + 12;
+			}
 		}
-		out.write('<div class="panel ' + type + '"><div class="panel-heading">' + title + '</div><div class="panel-body">');
+		/*for (var k in result) {
+			console.log(k + '=' + result[k].source);
+		}*/
+		return result;
 	},
-	writePanelFooter: function(out) {
-		out.write('</div></div>');
+	_createTemplate: function(template, includes) {
+		try {
+			if (arguments.length > 1) {
+				// Slot in any includes.
+				template = template.replace(/<!--#\s*include\s+"([^"]+)"\s*-->/g, function(m, name) {
+					return name in includes ? includes[name] : "[an error occurred while processing this directive]";
+				});
+			}
+			return _.template(template);
+		} catch (ex) {
+			console.log("Unable to create template:");
+			console.log(template);
+			console.log(ex.toString());
+			throw ex;
+		}
 	},
 	/**
-	 * Write a navigation panel based on an array of links. Each entry in the array
-	 * should be an object containing an href and a text field.
+	 * Write a page, embedding it in the standard page template.
+	 * @param {string} filename the filename to use
+	 * @param {string} title the page title
+	 * @param {string} body the body HTML
 	 */
-	writeNavPanel: function(out, title, links) {
-		if (links.length == 0)
-			return;
-		out.write('<div class="panel panel-default"><div class="panel-heading">');
-		out.write(title);
-		out.write('</div><div class="panel-body"><ul class="nav nav-pills nav-stacked">');
-		var me = this;
-		links.forEach(function(link) {
-			out.write('<li>');
-			if ('href' in link) {
-				out.write('<a href="' + link['href'] + '">');
-				if ('text' in link) {
-					out.write(link['text']);
-				} else {
-					out.write(escapeHTML(link['href']));
-				}
-			} else if ('type' in link) {
-				out.write(me.makeLink(link['type'], link['text']));
-			}
-			out.write('</li>');
-		});
-		out.write('</ul></div></div>');
+	writePage: function(filename, title, body) {
+		fs.writeFileSync(path.join(this.destination, filename),
+			this.pageTemplate({
+				"title": title,
+				"rootTitle": this.title,
+				"rootURL": "index.html",
+				"stylesheets": this.stylesheets,
+				"body": body
+			}), "utf-8");
 	},
 	createIndex: function() {
 		// Needed for closures:
@@ -163,39 +170,19 @@ JSVSynthTemplate.prototype = {
 		if (this.readme) {
 			readme = this.replaceLinks(this.readme);
 		}
-		fs.writeFileSync(path.join(this.destination, "index.html"),
-			this.pageTemplate(
-				{
-					"title": this.title,
-					"stylesheets": this.stylesheets,
-					"body": this.indexPageTemplate({
-						"readme": readme,
-						"categories": []
-					})
-				}),
-			"utf-8");
-		return;
-		// Start by creating the body HTML.
-		var body = [];
-		// Add the README section.
-		out.write('\t<div class="container">\n\t\t<div class="row">\n\t\t\t<div class="col-md-12">');
-		if (this.readme) {
-			out.write(this.replaceLinks(this.readme));
-		}
-		out.write('</div>\n\t\t</div>\n\t\t<div class="row">\n\t\t\t<div class="col-md-12">');
+		var categories = [];
+		// Go through each thing that can be displayed on the index page and add them if they exist.
 		this.indexPageObjects.forEach(function(kind) {
-			var things = me.getAllOfKind(kind);
-			var links = new Array(things.length);
-			things.forEach(function(thing) {
-				links.push({'type':thing.longname,'text':thing.name});
+			categories.push({
+				"contents": me.getAllOfKind(kind),
+				"title": me.lookupKindName(kind)
 			});
-			me.writeNavPanel(out, me.lookupKindName(kind), links);
 		});
-		out.write('\n\
-			</div>\n\
-		</div>\n\
-	</div>\n');
-		out.end('  </body>\n</html>\n');
+		this.writePage("index.html", this.title, this.indexPageTemplate({
+				"readme": readme,
+				"categories": categories
+			}));
+		return;
 	},
 	lookupKindName: function(kind) {
 		if (kind in this.kindNames) {
@@ -213,96 +200,58 @@ JSVSynthTemplate.prototype = {
 		}
 	},
 	createPage: function(cls) {
-		var out = createWriteStream(this.makePath(cls.longname), {'encoding': this.encoding});
-		this.writeHeader(out, this.title + ": " + cls.longname);
-		this.writeNavBar(out);
-		out.write('\t<div class="container">\n\t\t<div class="row">\n\t\t\t<div class="col-md-12">\n\t\t\t\t');
-		out.write(this.replaceLinks(cls.description));
-		out.write('\n\t\t\t</div>\n\t\t</div>\n');
-		// Now that we've got the description, dump out a list of other junk
 		var me = this;
+		//var out = createWriteStream(this.makePath(cls.longname), {'encoding': this.encoding});
+		var description = this.replaceLinks(cls.description);
+		var title = this.title + ": " + cls.longname;
+		var categories = new Array(this.thingPageObjects.length);
 		this.thingPageObjects.forEach(function(kind) {
 			var things = me.data({'memberof':cls.longname,'kind':kind}).order('name').get();
-			if (things.length > 0) {
-				out.write('<div class="row"><div class="col-md-12"><h1>');
-				out.write(me.lookupKindName(kind));
-				out.write('</h1>\n');
-				things.forEach(function(thing) {
-					me.writeThing(out, thing);
-				});
-				out.write('</div></div>\n');
-			}
-		});
-		var things = this.data({'memberof':cls.longname}).get();
-		things.forEach(function(thing) {
-			out.write("&lt;" + thing.kind + "&gt; " + thing.longname + '<br>');
-		});
-		out.end('\t</div>\n  </body>\n</html>\n');
-	},
-	createBadges: function(thing) {
-		var rv = [];
-		if (thing.readonly) {
-			rv.push('<span class="badge">read only</span>');
-		}
-		return rv.length == 0 ? '' : ' ' + rv.join(' ');
-	},
-	createTypes: function(type) {
-		if (!type) {
-			return '<div class="type type-none">no type specified</div>';
-		}
-		if (type == 'NUMBER') {
-			return '<div class="type type-number">number</div>';
-		}
-		if (type.names) {
-			var rv = [];
-			type.names.forEach(function(t) {
-				rv.push(escapeHTML(String(t)));
+			categories.push({
+				"contents": things,
+				"title": me.lookupKindName(kind),
+				"kind": kind,
+				"kindTemplate": (kind in me.kindTemplates) ? me.kindTemplates[kind] : null
 			});
-			return '<div class="type">' + escapeHTML(rv.join(', ')) + '</div>';
-		} else {
-			return '<div class="type">' + escapeHTML(String(type)) + '</div>';
-		}
-	},
-	writeThing: function(out, thing) {
-		switch(thing.kind) {
-		case 'member':
-			this.writeMember(out, thing);
-			break;
-		case 'function':
-			this.writeFunction(out, thing);
-			break;
-		default:
-			out.write('<p>No writer for type ' + escapeHTML(thing.kind) + '</p>');
-		}
-	},
-	writeMember: function(out, member) {
-		this.writePanelHeader(out, '<a name="' + member.name + '">' + escapeHTML(member.name) + this.createBadges(member) + '</a>');
-		out.write(this.createTypes(member.type));
-		out.write(this.replaceLinks(member.description));
-		//out.write('<pre>' + escapeHTML(JSON.stringify(member, null, 2)) + '</pre>');
-		console.log(member);
-		this.writePanelFooter(out);
-	},
-	writeFunction: function(out, func) {
-		this.writePanelHeader(out, '<a name="' + func.name + '">' + escapeHTML(func.name) + this.createBadges(func) + '</a>');
-		out.write(this.replaceLinks(func.description));
-		this.writePanelFooter(out);
-		console.log(func);
+		});
+		this.writePage(this.makeFileName(cls.longname), title, this.classPageTemplate({
+			"description": description,
+			"categories": categories,
+			"replaceLinks": function(txt) { return me.replaceLinks(txt); }
+		}));
 	},
 	publish: function() {
+		// First things first, create the destination if it does not exist.
+		if (!fs.existsSync(this.destination)) {
+			console.log("make " + this.destination);
+			if (fs.mkPath) {
+				fs.mkPath(this.destination);
+			} else {
+				fs.mkdirSync(this.destination);
+			}
+		}
+		console.log("Creating index...");
 		this.createIndex();
 		// Create pages for each class...
 		var me = this;
-		this.data({"kind":["class","namespace"]}).get().forEach(function(cls) {
+		this.data({"kind":["class","namespace","mixin"]}).get().forEach(function(cls) {
+			console.log("Creating page for " + cls.longname);
 			me.createPage(cls);
 		});
 	},
 	replaceLinks: function(text) {
+		if (text == null || (typeof text) == 'undefined')
+			return text;
 		text = String(text);
 		var me = this;
 		return text.replace(/{@link(code)?\s+([^\s}]+)(?:\s+([^}]+))?\s*}/g, function(match, type, linkTo, linkText) {
 			if (!linkText) {
-				linkText = escapeHTML(linkTo);
+				// Escape HTML and replace any '#' with '.'
+				var linkedObj = me.getNamedObject(linkTo);
+				linkText = escapeHTML(linkTo.replace(/#/g, '.'));
+				if (linkedObj && (linkedObj.kind == 'function')) {
+					linkText = linkText + '()';
+				}
 				// Because we always escape the linkText for HTML codes in this case, we need
 				// to wrap with <code> here
 				if (type == 'code') {
@@ -315,7 +264,11 @@ JSVSynthTemplate.prototype = {
 		});
 	},
 	getNamedObject: function(name) {
-		return this.data({"name":name});
+		var rv = this.data({"longname":name}).get();
+		if (rv.length > 1) {
+			console.log("Warning: Multiple answers for type \"" + name + "\"?");
+		}
+		return rv.length == 0 ? null : rv[0];
 	},
 	/**
 	 * Transform something into a link.
@@ -329,9 +282,19 @@ JSVSynthTemplate.prototype = {
 		return '<a href="' + this.makeURL(to) + '">' + text + '</a>';
 	},
 	makeURL: function(toType) {
-		// FIXME: Should look up the type and then make the link depending on the type
-		// (functions and members should link to the parent type, not the page)
-		return this.makeFileName(toType);
+		if (typeof toType == 'string') {
+			// Assume this is the name of a thing to look up.
+			var to = this.data({'longname':toType}).get();
+			if (to.length == 0) {
+				// can't do anything.
+				return "[bad link to " + toType + "]";
+			}
+			toType = to[0];
+		}
+		if ((toType.kind == 'member' || toType.kind == 'function') && toType.memberof) {
+			return this.makeFileName(toType.memberof) + '#' + this.makeAnchor(toType.name);
+		}
+		return this.makeFileName(toType.longname);
 	},
 	makeFileName: function(toType) {
 		var name = String(toType);
@@ -344,6 +307,10 @@ JSVSynthTemplate.prototype = {
 			name = name + "_";
 		}
 		return name + '.html';
+	},
+	makeAnchor: function(toName) {
+		// FIXME: Escape whatever needs to be escaped
+		return toName;
 	},
 	makePath: function(toType) {
 		return path.join(this.destination, this.makeFileName(toType));
