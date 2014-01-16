@@ -59,7 +59,7 @@ function JSVSynthTemplate(data, destination, encoding, options, readme, template
 	});
 	this.stylesheets = bsSheets.concat(this.stylesheets);
 	this.scripts = bsScripts;
-	this.pageTemplate = _.template(fs.readFileSync(path.join(templatePath, "template.html"), "utf-8"));
+	this.pageTemplate = _.template(fs.readFileSync(path.join(templatePath, "page.tmpl"), "utf-8"));
 	this.indexPageTemplate = _.template(fs.readFileSync(path.join(templatePath, "index.tmpl"), "utf-8"));
 	this.classPageTemplates = this._loadTemplates(path.join(templatePath, "class.tmpl"));
 	this.classPageTemplate = this.classPageTemplates['body'];
