@@ -1,0 +1,44 @@
+// Slight customizations for bootstrap
+// From bootstrap 3's variables.less:
+@brand-primary:         #428bca;
+@link-color:            @brand-primary;
+@link-hover-color:      darken(@link-color, 15%);
+@font-family-sans-serif:  "Helvetica Neue", Helvetica, Arial, sans-serif;
+@font-family-monospace:   Monaco, Menlo, Consolas, "Courier New", monospace;
+@code-color:                  #c7254e;
+@code-bg:                     #f9f2f4;
+@border-radius-base:             4px;
+
+/* bootstrap messes up the styling of code in links, make them link colored */
+
+a code { color: @link-color; }
+a:hover code { color: @link-hover-color; }
+
+/* Also make panel header links more obvious */
+.panel h3 a { color: @link-color; }
+.panel h3 a:hover { color: @link-hover-color; }
+
+/* Because we use the navbar at the top of the page, we need to bump the rest of the content on the page down. */
+
+body { margin-top: 60px; }
+
+/* Type values */
+.type {
+	// This is basically taken from bootstrap's code.less
+	font-family: @font-family-monospace;
+	padding: 2px 4px;
+	font-size: 90%;
+	color: @code-color;
+	background-color: @code-bg;
+	white-space: nowrap;
+	border-radius: @border-radius-base;
+}
+
+.type.type-none {
+	/* Reset to sans-serif but otherwise leave the same */
+	font-family: @font-family-sans-serif;
+}
+
+.function-params dd, .function-returns dd {
+	margin-left: 4em;
+}

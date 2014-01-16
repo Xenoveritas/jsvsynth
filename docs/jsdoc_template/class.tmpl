@@ -11,7 +11,8 @@ text of the section being included.
 <!--#section "body"-->
 		<div class="row">
 			<div class="col-md-12">
-				<%=description%>
+				<h1><%=thing.longname%></h1>
+				<p><%=description%></p>
 			</div>
 		</div>
 		<div class="row">
@@ -25,7 +26,7 @@ text of the section being included.
 						kindTemplate = function() { return "[no template for " + category.kind + "]"; };
 					}
 					_.each(category.contents, function(thing) {
-						%><%=kindTemplate({"thing": thing, "replaceLinks": replaceLinks})%><%
+						%><%=kindTemplate({"thing": thing, "template": template, "templates": templates})%><%
 					});
 %>
 					</div>
@@ -35,49 +36,132 @@ text of the section being included.
 			</div>
 		</div>
 <!--#section "badges"-->
-<% if (thing.readonly) {%><span class="badge">read only</span><% } %>
+<% if (thing.readonly) {%><span class="label label-default">read only</span><% } %>
 <!--#section "kindType"-->
-<% var type = thing.type;
+<%
+if (type && type.type) {
+	type = type.type;
+}
 if (!type) {
-	%><div class="type type-none">no type specified</div>
+	%><span class="type type-none">no type specified</span>
 <%} else if (type == 'NUMBER') {
-	%><div class="type type-number">number</div>
+	%><span class="type type-number">number</span>
 <%} else if (type.names) {
-	var rv = [];
-	type.names.forEach(function(t) {
-		rv.push(String(t));
+	%><span class="type"><%
+	var comma = false;
+	_.each(type.names, function(t) {
+		if (comma) {
+			%>, <%
+		} else {
+			comma = true;
+		}
+		t = String(t);
+		// FIXME: Need to support arrays and other things like that
+		if (template.getNamedObject(t)) {
+			%><%=template.makeLink(t)%><%
+		} else {
+			%><%-t%><%
+		}
 	});
-	%><div class="type"><%-rv.join(', ')%></div><%
+	%></span><%
 } else {
-	%><div class="type"><%-String(type)%></div><%
+	console.log('What is this?');
+	console.log(type);
+	%><span class="type"><%-String(type)%></span><%
 }%>
 <!--#section "kind.member"-->
 			<div class="panel panel-default">
-				<div class="panel-heading"><h3 class="panel-title" id="<%-thing.name%>"><%-thing.name%></h3></div>
+				<div class="panel-heading"><h3 class="panel-title" id="<%-thing.name%>"><!--#include "badges"--><%=templates.kindType({'type':thing.type,'template':template})%><%-thing.name%></h3></div>
 				<div class="panel-body">
-					<!--#include "badges"-->
-					<!--#include "kindType"-->
-					<%=replaceLinks(thing.description)%>
+					<p><%=template.replaceLinks(thing.description)%></p>
 				</div>
 			</div>
 <!--#section "kind.function"-->
 			<div class="panel panel-default">
-				<div class="panel-heading"><h3 class="panel-title" id="<%-thing.name%>"><%-thing.name%></h3><!--#include "badges"--></div>
+				<div class="panel-heading"><h3 class="panel-title" id="<%-thing.name%>"><%
+if (thing.returns) {
+	_.each(thing.returns, function(type) {
+		%><%=templates.kindType({'type':type,'template':template})%><%
+	});
+}
+%><!--#include "badges"--><%-thing.name%>(<%
+var comma = false;
+_.each(thing.params, function(param) {
+	if (comma) {
+		%>, <%
+	} else {
+		comma = true;
+	}
+	%><%-param.name%><%
+});
+%>)</h3></div>
 				<div class="panel-body">
-					<%=replaceLinks(thing.description)%>
+					<p><%=template.replaceLinks(thing.description)%></p>
+<% if (thing.params && thing.params.length > 0) { %>
+					<dl class="function-params">
+<%_.each(thing.params, function(param) {
+	%><h4>Parameters</h4><dt><%
+		if (param.optional) {
+			%><span class="label label-default">optional</span><%
+		}
+		if (param.nullable) {
+			%><span class="label label-default">nullable</span><%
+		}
+		if (param.variable) {
+			console.log("Found a variable:");
+			console.log(param.variable);
+			%><span class="label label-default">variable</span><%
+		}
+%><%=templates.kindType({'type':param.type,'template':template})%><%-param.name%><%
+if (param.defaultvalue) {
+	console.log("Found a default value:");
+	console.log(param.defaultvalue);
+}
+%></dt>
+	<dd><%=template.replaceLinks(param.description)%></dd><%
+});
+%>					</dl>
+<% }
+if (thing.returns && thing.returns.length > 0) {
+	%><h4>Returns</h4><dl class="function-returns"><%
+	_.each(thing.returns, function(ret) {
+	%><dt><%
+		// I'm not certain any of this makes sense for return values, but whatever
+		if (ret.optional) {
+			%><span class="label label-default">optional</span><%
+		}
+		if (ret.nullable) {
+			%><span class="label label-default">nullable</span><%
+		}
+		if (ret.variable) {
+			console.log("Found a variable:");
+			console.log(param.variable);
+			%><span class="label label-default">variable</span><%
+		}
+%><%=templates.kindType({'type':ret.type,'template':template})%></dt>
+	<dd><%=template.replaceLinks(ret.description)%></dd><%
+	});
+} %>
 				</div>
 			</div>
 <!--#section "kind.class"-->
 			<div class="panel panel-default">
-				<div class="panel-heading"><h3 class="panel-title" id="<%-thing.name%>"><a href="<%=thing.url%>"><%-thing.name%></a></h3><!--#include "badges"--></div>
+				<div class="panel-heading"><h3 class="panel-title" id="<%-thing.name%>"><!--#include "badges"--><a href="<%=thing.url%>"><%-thing.name%></a></h3></div>
 				<div class="panel-body">
-					<%=replaceLinks(thing.description)%>
+					<p><%=template.replaceLinks(thing.description)%></p>
 				</div>
 			</div>
 <!--#section "kind.mixin"-->
 			<div class="panel panel-default">
-				<div class="panel-heading"><h3 class="panel-title" id="<%-thing.name%>"><a href="<%=thing.url%>"><%-thing.name%></a></h3><!--#include "badges"--></div>
+				<div class="panel-heading"><h3 class="panel-title" id="<%-thing.name%>"><!--#include "badges"--><a href="<%=thing.url%>"><%-thing.name%></a></h3></div>
 				<div class="panel-body">
-					<%=replaceLinks(thing.description)%>
+					<p><%=template.replaceLinks(thing.description)%></p>
+				</div>
+			</div>
+<!--#section "kind.namespace"-->
+			<div class="panel panel-default">
+				<div class="panel-heading"><h3 class="panel-title" id="<%-thing.name%>"><!--#include "badges"--><a href="<%=thing.url%>"><%-thing.name%></a></h3></div>
+				<div class="panel-body">
+					<p><%=template.replaceLinks(thing.description)%></p>
 				</div>
 			</div>

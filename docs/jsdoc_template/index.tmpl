@@ -1,5 +1,10 @@
-<% // Template for the index content.
-if (readme) { %>
+<% // Template for the index content. %>
+<div class="row">
+	<div class="col-md-12">
+		<h1><%-title%></h1>
+	</div>
+</div>
+<% if (readme) { %>
 		<div class="row">
 			<div class="col-md-12">
 				<%=readme%>

@@ -34,6 +34,7 @@
  * Note: you cannot use <code>for (var v in avs) {}</code> to iterate over
  * variables in AviSynth, you can only get and set values through this
  * collection.
+ * @type {Object[]}
  */
 var avs = {};
 
@@ -57,6 +58,7 @@ function AviSynth() { }
  * Note: you cannot use <code>for (var f in AviSynth.functions) {}</code> to
  * iterate over functions in AviSynth, you can only get and set functions
  * through this collection.
+ * @type {Object.<string, function>}
  */
 AviSynth.functions = {};
 
@@ -74,12 +76,14 @@ AviSynth.functions = {};
  * Note: you cannot use <code>for (var v in AviSynth.variables) {}</code> to
  * iterate over variables in AviSynth, you can only get and set values through
  * this collection.
+ * @type {Object.<string, *>}
  */
 AviSynth.variables = {};
 
 /**
  * An array of available color spaces within AviSynth. Each object is a
  * {@linkcode AviSynth.ColorSpace} object.
+ * @type {Array.<AviSynth.ColorSpace>}
  */
 AviSynth.ColorSpaces = [];
 
@@ -92,7 +96,7 @@ AviSynth.ColorSpaces = [];
  * requires a <code>AviSynth.ColorSpace</code>, it's actually looking for either
  * a string or an object which contains a property called <code>name</code> that
  * contains the name of the color space. So you can in fact create a "new"
- * ColorSpace object and if you supply the name of an existing color space, it
+ * ColorSpace object and, if you supply the name of an existing color space, it
  * will, in fact, "work." But there's no point to doing this.)
  * @constructor
  */
@@ -107,26 +111,31 @@ AviSynth.ColorSpace = function() { };
  * <li><code>YV12</code></li>
  * </ul>
  * @readonly
+ * @type {string}
  */
 AviSynth.ColorSpace.prototype.name = "";
 
 /**
  * The RGB32 color space.
+ * @type {AviSynth.ColorSpace}
  */
 AviSynth.ColorSpace.RGB32 = new AviSynth.ColorSpace();
 
 /**
  * The RGB24 color space.
+ * @type {AviSynth.ColorSpace}
  */
 AviSynth.ColorSpace.RGB24 = new AviSynth.ColorSpace();
 
 /**
  * The YUY2 color space.
+ * @type {AviSynth.ColorSpace}
  */
 AviSynth.ColorSpace.YUY2 = new AviSynth.ColorSpace();
 
 /**
  * The YV12 color space.
+ * @type {AviSynth.ColorSpace}
  */
 AviSynth.ColorSpace.YV12 = new AviSynth.ColorSpace();
 
@@ -311,6 +320,12 @@ AviSynth.VideoInfo.prototype = {
 	 * @readonly
 	 */
 	colorSpace: "",
+	/**
+	 * The frame rate as a ratio. This is simply
+	 * <code>[frameRateNumberator, frameRateDenominator]</code>
+	 * @type Array.<number>
+	 * @readonly
+	 */
 	frameRatio: [ 0, 0 ]
 };
 
@@ -472,6 +487,8 @@ AviSynth.VideoFrameData.prototype = {
 	/**
 	 * The width of the frame in pixels. In the case of planar data,
 	 * this may not be what you're expecting due to chroma subsampling!
+	 * @type {number}
+	 * @readonly
 	 */
 	width: 0,
 	/**

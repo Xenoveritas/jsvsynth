@@ -5,18 +5,30 @@
 
 var doc_dir = 'docs';
 var output_dir = 'build/docs';
-var css = [ 'bootstrap/css/bootstrap.min.css', 'bootstrap/css/bootstrap-theme.min.css' ];
+var css = [ 'bootstrap/css/bootstrap.min.css', 'bootstrap/css/bootstrap-theme.min.css',
+	'bootstrap/js/jquery-2.0.3.min.js', 'bootstrap/js/bootstrap.min.js' ];
 var jsdoc_api = 'docs/api/jsvsynth_api.js';
 var jsdoc_readme = 'docs/api/README.md';
 var jsdoc_dest = output_dir + '/api';
 var jsdoc_template = 'docs/jsdoc_template';
 var jsdoc_conf = 'docs/template.json';
 
+var less_files = [
+	'docs/jsdoc_template/jsdoc.less'
+];
+
 var os = require('os');
 var path = require('path');
 var fs = require('fs');
 var marked = require('marked');
 var child_process = require('child_process');
+var less = null;
+try {
+	less = require('less');
+} catch (ex) {
+	console.log('Warning: less not available, skipping less step');
+	console.log(ex);
+}
 
 // Normalize paths from above
 doc_dir = path.normalize(doc_dir);
@@ -174,6 +186,33 @@ function copyCSS(next) {
 	copyNext(0);
 }
 
+function runLessC(next) {
+	if (less == null) {
+		console.log('lessc: not available');
+		return next();
+	}
+	function lessc(files, current, next) {
+		if (current >= files.length)
+			return next();
+		var file = files[current];
+		var output = file.substring(file.length-5) == '.less' ? file.substring(0,file.length-4) + 'css' : file + '.css';
+		console.log('lessc: %s => %s', file, output);
+		var src = fs.readFileSync(file, {'encoding':'utf-8'});
+		var parser = new(less.Parser)({
+			filename: file
+		});
+		parser.parse(src, function(e, tree) {
+			if (tree) {
+				fs.writeFileSync(output, tree.toCSS({'compress':true}), {'encoding':'utf-8'});
+				return lessc(files, current+1, next);
+			} else {
+				console.log("lessc failed on %s", file);
+			}
+		});
+	}
+	lessc(less_files, 0, next);
+}
+
 function runJSDoc(next) {
 	// First see if we can even run JSDoc
 	console.log("jsdoc: check if available");
@@ -183,7 +222,7 @@ function runJSDoc(next) {
 	// require.resolve() here, but I can't, because JSDoc isn't an actual
 	// Node.js module.
 
-	var jsdoc_module_path = path.join('node_modules', 'jsdoc')
+	var jsdoc_module_path = path.join('node_modules', 'jsdoc');
 	if (fs.existsSync(jsdoc_module_path)) {
 		process.env['PATH'] = process.env['PATH'] + path.delimiter + jsdoc_module_path;
 		console.log("Auto-added jsdoc to PATH: %s", process.env.PATH);
@@ -191,6 +230,16 @@ function runJSDoc(next) {
 
 	var jsdoc_command = 'jsdoc';
 	var jsdoc_args = [ ];
+	// If the nodejs version is available, use that
+	if (fs.existsSync(path.join(jsdoc_module_path, 'jsdoc.js'))) {
+		if (os.type() == 'Windows_NT') {
+			// Have to run it through node
+			jsdoc_command = 'node';
+			jsdoc_args = [ path.join(jsdoc_module_path, 'jsdoc.js') ];
+		} else {
+			jsdoc_command = 'jsdoc.js';
+		}
+	}
 	if (os.type() == 'Windows_NT') {
 		// Because the JSDoc wrapper is a CMD file and CMD files are "special"
 		// under Windows and not "normal processes", we have to instead invoke
@@ -253,7 +302,7 @@ function finished() {
 }
 
 function run() {
-	var chain = [ createMarkdown, copyCSS, runJSDoc, finished ];
+	var chain = [ createMarkdown, copyCSS, runLessC, runJSDoc, finished ];
 	var i = 0;
 	var execNext = function() {
 		if (i < chain.length) {

@@ -12,6 +12,12 @@ function escapeHTML(str) {
 	return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+function copyFile(from, to) {
+	// For now:
+	var contents = fs.readFileSync(from);
+	fs.writeFileSync(to, contents);
+}
+
 function createWriteStream(path, options) {
 	return new Writer(path, options);
 }
@@ -41,12 +47,18 @@ function JSVSynthTemplate(data, destination, encoding, options, readme, template
 	this.bootstrap = escapeHTML(options['bootstrap']);
 	this.title = options['title'];
 	this.readme = readme;
+	this.templatePath = templatePath;
 	var bootstrap = this.bootstrap;
 	if (bootstrap.length > 0 && (bootstrap.charAt(bootstrap.length-1) != '/'))
 		bootstrap = bootstrap + '/';
-	this.stylesheets = this.stylesheets.map(function(sheet) {
+	var bsSheets = this.bootstrapStylesheets.map(function(sheet) {
 		return bootstrap + sheet;
 	});
+	var bsScripts = this.bootstrapScripts.map(function(script) {
+		return bootstrap + script;
+	});
+	this.stylesheets = bsSheets.concat(this.stylesheets);
+	this.scripts = bsScripts;
 	this.pageTemplate = _.template(fs.readFileSync(path.join(templatePath, "template.html"), "utf-8"));
 	this.indexPageTemplate = _.template(fs.readFileSync(path.join(templatePath, "index.tmpl"), "utf-8"));
 	this.classPageTemplates = this._loadTemplates(path.join(templatePath, "class.tmpl"));
@@ -65,7 +77,9 @@ function JSVSynthTemplate(data, destination, encoding, options, readme, template
 }
 
 JSVSynthTemplate.prototype = {
-	stylesheets: [ 'css/bootstrap.min.css', 'css/bootstrap-theme.min.css' ],
+	bootstrapStylesheets: [ 'css/bootstrap.min.css', 'css/bootstrap-theme.min.css' ],
+	bootstrapScripts: [ 'js/jquery-2.0.3.min.js', 'js/bootstrap.min.js' ],
+	stylesheets: [ 'jsdoc.css' ],
 	/**
 	 * Set of names that are "reserved" and therefore can't have pages named after them.
 	 */
@@ -152,14 +166,16 @@ JSVSynthTemplate.prototype = {
 	 * @param {string} title the page title
 	 * @param {string} body the body HTML
 	 */
-	writePage: function(filename, title, body) {
+	writePage: function(filename, title, body, navbar) {
 		fs.writeFileSync(path.join(this.destination, filename),
 			this.pageTemplate({
 				"title": title,
 				"rootTitle": this.title,
 				"rootURL": "index.html",
 				"stylesheets": this.stylesheets,
-				"body": body
+				"scripts": this.scripts,
+				"body": body,
+				"navbar": navbar
 			}), "utf-8");
 	},
 	createIndex: function() {
@@ -171,17 +187,23 @@ JSVSynthTemplate.prototype = {
 			readme = this.replaceLinks(this.readme);
 		}
 		var categories = [];
+		var navbar = [];
 		// Go through each thing that can be displayed on the index page and add them if they exist.
 		this.indexPageObjects.forEach(function(kind) {
 			categories.push({
 				"contents": me.getAllOfKind(kind),
 				"title": me.lookupKindName(kind)
 			});
+			navbar.push({
+				'text': me.lookupKindName(kind),
+				'url': '#' + kind
+			});
 		});
 		this.writePage("index.html", this.title, this.indexPageTemplate({
+				"title": this.title,
 				"readme": readme,
 				"categories": categories
-			}));
+			}), navbar);
 		return;
 	},
 	lookupKindName: function(kind) {
@@ -201,12 +223,49 @@ JSVSynthTemplate.prototype = {
 	},
 	createPage: function(cls) {
 		var me = this;
-		//var out = createWriteStream(this.makePath(cls.longname), {'encoding': this.encoding});
 		var description = this.replaceLinks(cls.description);
 		var title = this.title + ": " + cls.longname;
 		var categories = new Array(this.thingPageObjects.length);
+		var navbar = [];
 		this.thingPageObjects.forEach(function(kind) {
-			var things = me.data({'memberof':cls.longname,'kind':kind}).order('name').get();
+			var things = me.data({'memberof':cls.longname,'kind':kind}).get();
+			categories.push({
+				"contents": things,
+				"title": me.lookupKindName(kind),
+				"kind": kind,
+				"kindTemplate": (kind in me.kindTemplates) ? me.kindTemplates[kind] : null
+			});
+			var navchildren = new Array(things.length);
+			things.forEach(function(thing) {
+				navchildren.push({
+					'text': thing.name,
+					'url': '#' + thing.name
+				});
+			});
+			navbar.push({
+				'text': me.lookupKindName(kind),
+				'url': '#.' + kind,
+				'children': navchildren
+			});
+		});
+		this.writePage(this.makeFileName(cls.longname), title, this.classPageTemplate({
+			"thing": cls,
+			"description": description,
+			"categories": categories,
+			"template": me,
+			"templates": me.classPageTemplates
+		}), navbar);
+	},
+	createGlobals: function() {
+		// This very nearly is the same as createPage, but...
+		var me = this;
+		// There is no description (should this reuse the readme?)
+		var description = '';
+		var title = this.title + ": Globals";
+		var categories = new Array(this.thingPageObjects.length);
+		this.thingPageObjects.forEach(function(kind) {
+			// Look up things in the global scope
+			var things = me.data({'scope':'global','kind':kind}).get();
 			categories.push({
 				"contents": things,
 				"title": me.lookupKindName(kind),
@@ -214,10 +273,12 @@ JSVSynthTemplate.prototype = {
 				"kindTemplate": (kind in me.kindTemplates) ? me.kindTemplates[kind] : null
 			});
 		});
-		this.writePage(this.makeFileName(cls.longname), title, this.classPageTemplate({
+		this.writePage("globals.html", title, this.classPageTemplate({
+			"thing": { "longname": "Globals", "name": "Globals" },
 			"description": description,
 			"categories": categories,
-			"replaceLinks": function(txt) { return me.replaceLinks(txt); }
+			"template": me,
+			"templates": me.classPageTemplates
 		}));
 	},
 	publish: function() {
@@ -230,12 +291,16 @@ JSVSynthTemplate.prototype = {
 				fs.mkdirSync(this.destination);
 			}
 		}
-		console.log("Creating index...");
+		// For now, always copy our CSS
+		copyFile(path.join(this.templatePath, 'jsdoc.css'), path.join(this.destination, 'jsdoc.css'));
+		console.log("Creating index page...");
 		this.createIndex();
+		console.log("Creating globals page...");
+		this.createGlobals();
 		// Create pages for each class...
 		var me = this;
 		this.data({"kind":["class","namespace","mixin"]}).get().forEach(function(cls) {
-			console.log("Creating page for " + cls.longname);
+			console.log("Creating " + cls.longname + " page...");
 			me.createPage(cls);
 		});
 	},
@@ -290,6 +355,10 @@ JSVSynthTemplate.prototype = {
 				return "[bad link to " + toType + "]";
 			}
 			toType = to[0];
+		}
+		if (toType.scope == 'global' && toType.kind == 'member') {
+			// Special
+			return "globals.html#" + this.makeAnchor(toType.name);
 		}
 		if ((toType.kind == 'member' || toType.kind == 'function') && toType.memberof) {
 			return this.makeFileName(toType.memberof) + '#' + this.makeAnchor(toType.name);
