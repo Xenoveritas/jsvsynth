@@ -387,7 +387,6 @@ JSVSynthTemplate.prototype = {
 };
 
 exports.publish = function(data, opts) {
-	console.log(opts);
 	var configuration = {
 		'bootstrap': 'bootstrap',
 		'title': 'JavaScript'

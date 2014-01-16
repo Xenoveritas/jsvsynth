@@ -37,7 +37,6 @@ jsdoc_api = path.normalize(jsdoc_api);
 jsdoc_dest = path.normalize(jsdoc_dest);
 
 function mkdirs(dir) {
-	console.log('mkdir: %s', dir);
 	if (!fs.existsSync(dir)) {
 		var parent = path.dirname(dir);
 		if (!parent || parent == dir) {
@@ -45,6 +44,7 @@ function mkdirs(dir) {
 		}
 		mkdirs(parent);
 		// Now that our parents exist, we can create ourself.
+		console.log('mkdir: %s', dir);
 		fs.mkdirSync(dir);
 	}
 }
@@ -167,13 +167,12 @@ function copyCSS(next) {
 		mkdirs(path.dirname(to));
 		copyFrom[idx] = from;
 		copyTo[idx] = to;
-		console.log('Schedule[%d]: %s => %s', idx, from, to);
 	});
 	function copyNext(idx) {
 		if (idx < copyFrom.length) {
 			copy(copyFrom[idx], copyTo[idx], function(err) {
 				if (err) {
-					console.error("CSS copy failed!");
+					console.error("File copy failed!");
 					console.error(err);
 				} else {
 					copyNext(++idx);
@@ -232,6 +231,7 @@ function runJSDoc(next) {
 	var jsdoc_args = [ ];
 	// If the nodejs version is available, use that
 	if (fs.existsSync(path.join(jsdoc_module_path, 'jsdoc.js'))) {
+		console.log('jsdoc: using node.js version (%s)', path.join(jsdoc_module_path, 'jsdoc.js'));
 		if (os.type() == 'Windows_NT') {
 			// Have to run it through node
 			jsdoc_command = 'node';
